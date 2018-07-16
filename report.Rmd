@@ -1,0 +1,218 @@
+---
+title: "Report"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(SelectionSimulator)
+library(ggplot2); theme_set(theme_minimal())
+source("./simulations/normal_test.R")
+```
+
+# Problem
+David Hamilton r
+
+# Algorithm
+
+# Tests
+
+## Two negatively correlated
+Covariance matrix = 
+$\begin{bmatrix} 
+1   & -0.8& 0 & 0 & 0 \\
+-0.8& 1   & 0 & 0 & 0 \\
+0   & 0   & 1 & 0 & 0 \\
+0   & 0   & 0 & 1 & 0 \\
+0   & 0   & 0 & 0 & 1
+\end{bmatrix}$
+
+Model coefficients = $\begin{bmatrix} 0 \\ 0 \\ 0 \\ 1 \\ 1 \end{bmatrix}$
+
+n = 100
+```{r}
+cov_mat_twoNeg <- rbind( c( 1.00,  0.00,  0.00, 0.00, 0.00),
+                    c( 0.00,  1.00,  0.00, 0.00, 0.00),
+                    c( 0.00,  0.00,  1.00, 0.00, 0.00),
+                    c( 0.00,  0.00,  0.00, 1.00, -0.8),
+                    c( 0.00,  0.00,  0.00, -0.8, 1.00))
+
+coefficients_twoNeg <- c(V1 = 0, V2 = 0, V3 = 0, V4 = 1, V5 = 1)
+
+test_twoNeg <- normal_test(cov_mat_twoNeg, coefficients_twoNeg, intercept = 9, 
+                        num_observations = 100, num_simulations = 500,
+                        file_name = "twoNeg.RDS")
+```
+
+
+```{r}
+betas_heat_map(test_twoNeg)
+#inclusion_order(test_twoNeg)
+test_mse_plotter(test_twoNeg)
+training_mse_plotter(test_twoNeg)
+test_mse_tables(test_twoNeg)
+training_mse_tables(test_twoNeg)
+```
+
+
+### Three Correlated, Step3
+
+Covariance matrix = 
+$\begin{bmatrix} 
+1     & -0.8  & 0.25  & 0 & 0 \\
+-0.8  & 1     & -0.75 & 0 & 0 \\
+0.25  & -0.75 & 1     & 0 & 0 \\
+0     & 0     & 0     & 1 & 0 \\
+0     & 0     & 0     & 0 & 1
+\end{bmatrix}$
+
+Model coefficients = 
+$\begin{bmatrix} \text{V1} =1 \\ \text{V2} =1 \\
+\text{V3} =1 \\ \text{V4} =0 \\ \text{V5} = 0 \end{bmatrix}$
+
+```{r}
+cov_mat_threeNeg_5 <- rbind( c(1.00, -0.80,  0.25, 0.00, 0.00),
+                    c(-0.80,  1.00, -0.75, 0.00, 0.00),
+                    c( 0.25, -0.75,  1.00, 0.00, 0.00),
+                    c( 0.00,  0.00,  0.00, 1.00, 0),
+                    c( 0.00,  0.00,  0.00, 0, 1.00))
+
+threeNeg_5_coeff <- c(V1 = 1, V2 = 1, V3 = 1, V4 = 0, V5 =0)
+
+test_threeNeg_10 <- normal_test(cov_mat_threeNeg_5, 
+                                coefficients = threeNeg_5_coeff, intercept = 9, 
+                        num_observations = 100, num_simulations = 500,
+                        file_name = "threeNeg.RDS")
+```
+
+```{r}
+betas_heat_map(test_threeNeg_10)
+#inclusion_order(test_threeNeg_10)
+test_mse_plotter(test_threeNeg_10)
+training_mse_plotter(test_threeNeg_10)
+test_mse_tables(test_threeNeg_10)
+training_mse_tables(test_threeNeg_10)
+```
+
+
+## Three correlated
+
+Covariance matrix = 
+$\begin{bmatrix} 
+1   & -0.8& 0.25& 0   & 0   & 0 & 0 & 0 & 0 & 0\\
+-0.8& 1   &-0.75& 0   & 0   & 0 & 0 & 0 & 0 & 0\\
+0.25&-0.75& 1   & 0   & 0   & 0 & 0 & 0 & 0 & 0\\
+0   & 0   & 0   & 1   &-0.75& 0 & 0 & 0 & 0 & 0\\
+0   & 0   & 0   &-0.75& 1   & 0 & 0 & 0 & 0 & 0 \\
+0   & 0   & 0   & 0   & 0   & 1 & -0.8 & 0.25 & 0 & 0 \\
+0   & 0   & 0   & 0   & 0   &-0.8& 1 & -0.75 & 0 & 0 \\
+0   & 0   & 0   & 0   & 0   &0.25& -0.75 & 1 & 0 & 0 \\
+0   & 0   & 0   & 0   & 0   & 0 & 0 & 0 & 1 & -0.75 \\
+0   & 0   & 0   & 0   & 0   & 0 & 0 & 0 & -0.75 & 1
+\end{bmatrix}$
+
+Coefficients = 
+```{r eval=FALSE, include=FALSE}
+
+test_threeNeg_10 <- normal_test(cov_mat_twoNeg, coefficients_twoNeg, intercept = 9, 
+                        num_observations = 100, num_simulations = 500,
+                        file_name = "twoNeg.RDS")
+
+cov_mat_5 <- rbind( c(1.00, -0.80,  0.25, 0.00, 0.00),
+                    c(-0.80,  1.00, -0.75, 0.00, 0.00),
+                    c( 0.25, -0.75,  1.00, 0.00, 0.00),
+                    c( 0.00,  0.00,  0.00, 1.00, -0.75),
+                    c( 0.00,  0.00,  0.00, -0.75, 1.00))
+
+coefficients_1 <- c(replicate(5, 0), replicate(5, 1))
+cov_mat_10 <- as.matrix(Matrix::bdiag(replicate(2, cov_mat_5, simplify = FALSE)))
+predict_gen <- SelectionSimulator::NormalPredictorsGenerator$new(
+  num_observations = 100,
+  num_predictors = 10,
+  norm_rand_var_sd = 1,
+  covariance_matrix = cov_mat_10)
+
+names(coefficients_1) <- sapply(seq.int(10), function(x) paste0("V", x))
+
+response_calc_1 <- SelectionSimulator::LinearNormalResponseCalculator$new(
+  norm_rand_var_sd = 1,
+  coefficients = coefficients_1,
+  intercept = 9)
+
+sim_data_gen <- SelectionSimulator::SimulationDataGenerator$new(
+  predict_gen, response_calc_1)
+
+
+constructors <- c(
+  Step = SelectionSimulator::StepLmWrapper$new,
+  Step2 = SelectionSimulator::Step2$new,
+  Step3 = SelectionSimulator::Step3$new)
+
+test_obj <- SelectionSimulator::Simulation$new(sim_data_gen, constructors, 500, 1)
+
+test_obj$simulate()
+```
+
+
+```{r eval=FALSE, include=FALSE}
+betas_heat_map(test_obj)
+test_mse_plotter(test_obj)
+training_mse_plotter(test_obj)
+test_mse_tables(test_obj)
+training_mse_tables(test_obj)
+#inclusion_order(test_obj)
+```
+
+## Three correlated
+
+Covariance matrix = 
+$\begin{bmatrix} 
+1 & -0.8 & 0.25 & 0 & 0 \\
+-0.8 & 1 & -0.75 & 0 & 0 \\
+0.25 & -0.75 & 1 & 0 & 0 \\
+0 & 0 & 0 & 1 & -0.75 \\
+0 & 0 & 0 & -0.75 & 1
+\end{bmatrix}$
+
+Coefficients = $\begin{bmatrix} 0 \\ 1 \\ 0 \\ 1 \\ 0 \end{bmatrix}$
+```{r eval=FALSE, include=FALSE}
+cov_mat_5 <- rbind( c(1.00, -0.80,  0.25, 0.00, 0.00),
+                    c(-0.80,  1.00, -0.75, 0.00, 0.00),
+                    c( 0.25, -0.75,  1.00, 0.00, 0.00),
+                    c( 0.00,  0.00,  0.00, 1.00, -0.75),
+                    c( 0.00,  0.00,  0.00, -0.75, 1.00))
+
+coefficients_1 <- c(V1 = 0, V2 = 1, V3 = 0, V4 = 1, V5 = 0)
+
+predict_gen <- NormalPredictorsGenerator$new(num_observations = 50,
+                                             num_predictors = 5,
+                                             norm_rand_var_sd = 1,
+                                             covariance_matrix = cov_mat_5)
+
+response_calc_1 <- LinearNormalResponseCalculator$new(norm_rand_var_sd = 1,
+                                                      coefficients = coefficients_1,
+                                                      intercept = 9)
+
+sim_data_gen <- SimulationDataGenerator$new(predict_gen, response_calc_1)
+
+
+constructors <- c(Step = StepLmWrapper$new, Step2 = Step2$new, Step3 = Step3$new)
+
+test_obj <- SelectionSimulator::Simulation$new(sim_data_gen, constructors, 500, 1)
+
+test_obj$simulate()
+
+```
+
+```{r eval=FALSE, include=FALSE}
+betas_heat_map(test_obj)
+#inclusion_order(test_obj)
+test_mse_plotter(test_obj)
+training_mse_plotter(test_obj)
+test_mse_tables(test_obj)
+training_mse_tables(test_obj)
+```
