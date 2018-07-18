@@ -1,9 +1,9 @@
 ---
 title: "Report"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
 ---
 
 
@@ -14,21 +14,30 @@ library(ggplot2); theme_set(theme_minimal())
 source("./simulations/normal_test.R")
 ```
 
-# Problem
-David Hamilton r
+# Introduction
+Quote paper
+
+David Hamilton (1987) Sometimes R 2 > r 2 yx 1 + r 2 yx 2 : Correlated Variables are Not Always Redundant, The American Statistician, 41:2, 129-132, DOI: 10.1080/00031305.1987.10475460
+
+Explain problem wrt stepwise variable selection
+
 
 # Algorithm
 
-# Tests
+Explain algorithm and hyperparameters, including time and space complexity
+
+
+# Simulations
+How it was simulated/methods, then results
 
 ## Two negatively correlated
 Covariance matrix = 
 $\begin{bmatrix} 
-1   & -0.8& 0 & 0 & 0 \\
--0.8& 1   & 0 & 0 & 0 \\
+1   & 0   & 0 & 0 & 0 \\
+0   & 1   & 0 & 0 & 0 \\
 0   & 0   & 1 & 0 & 0 \\
-0   & 0   & 0 & 1 & 0 \\
-0   & 0   & 0 & 0 & 1
+0   & 0   & 0 & 1 & -0.8 \\
+0   & 0   & 0 & -0.8 & 1
 \end{bmatrix}$
 
 Model coefficients = $\begin{bmatrix} 0 \\ 0 \\ 0 \\ 1 \\ 1 \end{bmatrix}$
@@ -54,10 +63,12 @@ betas_heat_map(test_twoNeg)
 #inclusion_order(test_twoNeg)
 test_mse_plotter(test_twoNeg)
 training_mse_plotter(test_twoNeg)
+```
+
+```{r, ascii = TRUE}
 test_mse_tables(test_twoNeg)
 training_mse_tables(test_twoNeg)
 ```
-
 
 ### Three Correlated, Step3
 
@@ -91,7 +102,7 @@ test_threeNeg_10 <- normal_test(cov_mat_threeNeg_5,
 
 ```{r}
 betas_heat_map(test_threeNeg_10)
-#inclusion_order(test_threeNeg_10)
+inclusion_order(test_threeNeg_10)
 test_mse_plotter(test_threeNeg_10)
 training_mse_plotter(test_threeNeg_10)
 test_mse_tables(test_threeNeg_10)
