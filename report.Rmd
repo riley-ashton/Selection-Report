@@ -1,9 +1,18 @@
 ---
 title: "Report"
+author : "Riley Ashton"
+header-includes:
+   - \usepackage{listings}
+   - \usepackage{color}
 output:
+  pdf_document:
+    highlight: pygments
+    toc: true
+    toc_depth: 2
+    number_sections: true
   html_document:
+    theme: spacelab
     df_print: paged
-  pdf_document: default
 ---
 
 
@@ -11,219 +20,314 @@ output:
 knitr::opts_chunk$set(echo = FALSE)
 library(SelectionSimulator)
 library(ggplot2); theme_set(theme_minimal())
+library(dplyr)
 source("./simulations/normal_test.R")
+set.seed(7882)
 ```
 
 # Introduction
-Quote paper
 
-David Hamilton (1987) Sometimes R 2 > r 2 yx 1 + r 2 yx 2 : Correlated Variables are Not Always Redundant, The American Statistician, 41:2, 129-132, DOI: 10.1080/00031305.1987.10475460
+David Hamilton's 1987 [see @hamilton1987] paper showed that correlated variables are not always
+redundant and that $R^2 > r^2_{yx_1} + r^2_{yx_2}$. In Section 3 the
+extreme example of this was shown when two variables were negatively correlated
+and neither were significant on their own, but together $R^2 \approx 1$.
 
-Explain problem wrt stepwise variable selection
+Forward selection is a greedy algorithm that only examines one variable at a 
+time. If there is a case similar to Section 3 of Hamilton's paper it is possible
+that neither variable would be added, since neither would be significant on
+their own.
 
+Algorithms that consider adding highly negatively correlated variables together,
+and additionally any variables correlated with those are discussed and tested.
+
+\newpage
 
 # Algorithm
 
-Explain algorithm and hyperparameters, including time and space complexity
+## Step 2
 
+### Algorithm Idea
+The first algorithm is called Step2. The purpose of Step2 improve upon the
+traditional stepwise algorithm (in this report called Step), by examining
+the correlation between covariates.
+
+In the case of highly negatively correlated covariate pairs, Step2 will
+consider the traditional choices of adding a single variable,
+but also the option of adding both negatively correlated 
+covariates to the model. What constitutes a highly negatively pair is
+determined by the parameter `cor_cutoff`. So a cutoff of -0.5 would mean
+all covariate pairs with a correlation of less than -0.5 (ex -0.7) would
+be additionally considered together. They would also be considered as singles,
+as is every other variable not yet included in the model.
+
+While both Step and Step2 are greedy algorithms, Step2 looks two steps
+ahead at highly negatively correlated covariate pairs.
+
+AIC or BIC is used as the metric for deciding which of the possible models
+is the best at each step. This is controlled by the parameter `k`.
+`k` = 2 means AIC is used and `k` = $log_e (n)$ means BIC by Step2
+
+
+### Pseudocode
+
+### Time and Space Complexity
+The time complexity of the algorithm depends heavily on the choice of
+`cor_cutoff`. The tradeoff is between a more accurate model and a longer
+run time. The returns to `cor_cutoff` closer to zero decrease
+rapidly, since Step rarely has a problem with negative correlated variables,
+unless the correlation is strong.
+
+The time complexity of Step2 is generally within a constant of Step.
+At worst it will be `p` times greater, where `p` is the number of parameters.
+This is since Step chooses from at most `p` models to fit at each stage,
+where Step2 choose from at most `p` choose 2 models.
+
+The space complexity is largely unchanged from the traditional algorithm,
+since only the AIC or BIC or each model is stored.
+
+
+## Step3
+
+### Algorithm Idea
+
+Step3 does everything that Step2 does, but it also considers recursing on the
+pairwise negatively correlated variables and considering anything highly
+correlated with them and then anything highly correlated with those, etc until
+it hits the recursion depth.
+
+Step3 with a recursion depth of 2 is equivalent to Step2. The depth used in
+this paper is set at 3, so the algorithm will, at most, consider including
+three covariates at a time.
+
+\newpage
 
 # Simulations
-How it was simulated/methods, then results
 
-## Two negatively correlated
-Covariance matrix = 
-$\begin{bmatrix} 
-1   & 0   & 0 & 0 & 0 \\
-0   & 1   & 0 & 0 & 0 \\
-0   & 0   & 1 & 0 & 0 \\
-0   & 0   & 0 & 1 & -0.8 \\
-0   & 0   & 0 & -0.8 & 1
-\end{bmatrix}$
+## Linear model
 
-Model coefficients = $\begin{bmatrix} 0 \\ 0 \\ 0 \\ 1 \\ 1 \end{bmatrix}$
+- $\mathbf Y = \beta_0 + \beta_1 \mathbf X_1 + \beta_2 \mathbf X_2 + \cdots + \epsilon$
+- $\mathbf X_i$ are correlated, centred random normal variables
+- Intercept ($\beta_0 = 9$)
+- $\epsilon \sim \mathcal N(\mu = 0, \sigma = 1)$
+- 1000 Simulations
 
-n = 100
+## Generating Correlated Centred Random Normal Variables
+The variables are generated according the the formula
+$$\mathbf X =   \mathbf{C Z}$$
+This generates random variables 
+$\mathbf X \sim \mathcal N(\boldsymbol \mu = 0, \mathbf \Sigma)$
+
+$\mathbf C$ is a $p \times p$ matrix that can be solved 
+from the given covariate matrix, $\boldsymbol \Sigma$, such that
+
+$$\boldsymbol \Sigma = \mathbf {C C^T} = 
+\begin{bmatrix} 
+\sigma_1^2 & \sigma_{12} & \cdots & \sigma_{1p} \\
+\sigma_{21} & \sigma_2^2 & \cdots & \sigma_{2p} \\
+\vdots & & \ddots & \vdots \\
+\sigma_{1p} & \cdots & &  \sigma_p^2
+\end{bmatrix}$$
+
+$\mathbf C$ is found using [Cholesky decomposition](https://en.wikipedia.org/wiki/Cholesky_decomposition)
+
+Where $\mathbf Z$ is a vector of random normal variables
+$$\mathbf Z = \begin{bmatrix} z_1 \\ z_2 \\ \vdots \\ z_p \end{bmatrix}$$
+Where $Z_i \sim \mathcal N(\mu = 0, \sigma =  1)$
+
+
+## Model 1 : Two negatively correlated
+$$ \text{Covariance} =\begin{bmatrix} 
+1   &-0.8 & 0 & 0 & 0 & 0 \\
+-0.8& 1   & 0 & 0 & 0 & 0 \\
+0   & 0   & 1 & 0 & 0 & 0 \\
+0   & 0   & 0 & 1 & 0 & 0 \\
+0   & 0   & 0 & 0 & 1 & 0 \\
+0   & 0   & 0 & 0 & 0 & 1
+\end{bmatrix} \hspace{10pt}
+\hspace{20pt}
+\text{Coefficients} = \begin{bmatrix} \text{V1} = 1 \\ \text{V2} = 1 \\
+\text{V3} = 0 \\ \text{V4} = 0 \\ \text{V5} = 0 \\ \text{V6} = 0 \end{bmatrix}$$
+
+Number of Observations = 100
+
+## Model 2: Three Negatively Correlated
+
+$$\text{Covariance} = \begin{bmatrix} 
+1     & -0.8  & 0.25  & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+-0.8  & 1     & -0.75 & 0 & 0& 0 & 0 & 0 & 0 & 0 \\
+0.25  & -0.75 & 1     & 0 & 0& 0 & 0 & 0 & 0 & 0 \\
+0     & 0     & 0     & 1 & 0& 0 & 0 & 0 & 0 & 0 \\
+0     & 0     & 0     & 0 & 1 & 0 & 0 & 0 & 0 & 0 \\
+0     & 0     & 0     & 0 & 0 & 1 & 0 & 0 & 0 & 0 \\
+0     & 0     & 0     & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\
+0     & 0     & 0     & 0 & 0 & 0 & 0 & 1 & 0 & 0 \\
+0     & 0     & 0     & 0 & 0 & 0 & 0 & 0 & 1 & 0 \\
+0     & 0     & 0     & 0 & 0 & 0 & 0 & 0 & 0 & 1 \\
+\end{bmatrix}
+\hspace{10pt}
+\hspace{20pt}
+\text{Coefficients}  = 
+\begin{bmatrix} \text{V1} = 1 \\ \text{V2} = 1 \\
+\text{V3} = 1 \\ \text{V4} =0 \\ \vdots \\ \text{V10} = 0 \\ 
+\end{bmatrix}$$
+Number of Observations = 100
+
+
+## Model 3 : Big p
+
+$$ \text{Covariance} = \begin{bmatrix}
+1 & -0.8  &  0.25 & 0     & 0     &  0 &\cdots  & 0\\
+-0.8&   1   & -0.4  & 0     & 0     & 0 & \cdots & 0  \\
+0.25& -0.4  &  1    & 0     & 0     & 0 & \cdots  & 0\\
+0   &  0    &  0    & 1     & -0.75 & 0 & \cdots & 0\\
+0   &  0    &  0    & -0.75 & 1     &  0 & \cdots & 0\\
+0   & 0     & 0     & 0     & 0     &   1  &\cdots & 0\\
+\vdots & \vdots & \vdots & \vdots & \vdots & \vdots & \ddots & \vdots \\
+0   & 0     & 0     & 0     & 0     &    0 & \cdots & 1 
+\end{bmatrix}
+\hspace{10pt}
+\hspace{20pt}
+\text{Coefficients} = \begin{bmatrix}
+\text{V1} = 1 \\
+\text{V2} = 1 \\
+\text{V3} = 1 \\
+\text{V4} = 1 \\
+\text{V5} = 1 \\
+\text{V6} = 0 \\
+\vdots \\
+\text{V100} = 0 \\
+\end{bmatrix}
+$$
+Number of Observations = 50
+
 ```{r}
-cov_mat_twoNeg <- rbind( c( 1.00,  0.00,  0.00, 0.00, 0.00),
-                    c( 0.00,  1.00,  0.00, 0.00, 0.00),
-                    c( 0.00,  0.00,  1.00, 0.00, 0.00),
-                    c( 0.00,  0.00,  0.00, 1.00, -0.8),
-                    c( 0.00,  0.00,  0.00, -0.8, 1.00))
+# Model 1 : Two Negatively Correlated
+cov_mat_twoNeg <- rbind(c( 1.00,  -0.8,  0.00, 0.00, 0.00, 0.00),
+                        c( -0.8,  1.00,  0.00, 0.00, 0.00, 0.00),
+                        c( 0.00,  0.00,  1.00, 0.00, 0.00, 0.00),
+                        c( 0.00,  0.00,  0.00, 1.00, 0.00, 0.00),
+                        c( 0.00,  0.00,  0.00, 0.00, 1.00, 0.00),
+                        c( 0.00,  0.00,  0.00, 0.00, 0.00, 1.00))
 
-coefficients_twoNeg <- c(V1 = 0, V2 = 0, V3 = 0, V4 = 1, V5 = 1)
+coefficients_twoNeg <- c(V1 = 1, V2 = 1, V3 = 0, V4 = 0, V5 = 0, V6 = 0)
 
 test_twoNeg <- normal_test(cov_mat_twoNeg, coefficients_twoNeg, intercept = 9, 
-                        num_observations = 100, num_simulations = 500,
+                        num_observations = 100, num_simulations = 1000,
                         file_name = "twoNeg.RDS")
+
+# Model 2 : Three Negatively Correlated
+cov_mat_threeNeg <- Matrix::diag(replicate(10,1))
+cov_mat_threeNeg[[1,2]] <- cov_mat_threeNeg[[2,1]] <- -0.8
+cov_mat_threeNeg[[3,2]] <- cov_mat_threeNeg[[2,3]] <- -0.75
+cov_mat_threeNeg[[3,1]] <- cov_mat_threeNeg[[1,3]] <- 0.25
+
+threeNeg_coeff <- c(V1 = 1, V2 = 1, V3 = 1, V4 = 0, V5 =0,
+                      V6 = 0, V7 =0, V8 = 0, V9 = 0, V10 = 0)
+
+threeNeg <- normal_test(cov_mat_threeNeg, 
+                        coefficients = threeNeg_coeff, intercept = 9, 
+                        num_observations = 100, num_simulations = 1000,
+                        file_name = "threeNeg.RDS")
+
+# Model 3 : Big P
+top_left <- rbind( c(1.00, -0.80,  0.25, 0.00, 0.00),
+                    c(-0.80,  1.00, -0.4, 0.00, 0.00),
+                    c( 0.25, -0.4,  1.00, 0.00, 0.00),
+                    c( 0.00,  0.00,  0.00, 1.00, -0.75),
+                    c( 0.00,  0.00,  0.00, -0.75, 1.00))
+
+cov_mat <- as.matrix(Matrix::bdiag(top_left, diag(replicate(95,1))))
+
+coefficients <- c(replicate(5,1), replicate(95, 0))
+names(coefficients) <- sapply(1:100, function(x) paste0("V", x))
+
+big_p <- normal_test(cov_mat, coefficients, intercept = 9, 
+                     num_observations = 50, num_simulations = 100,
+                     file_name = "big_p.RDS")
 ```
 
+\newpage
+
+# Results
+
+## Model 1 : Two Negatively Correlated
 
 ```{r}
 betas_heat_map(test_twoNeg)
-#inclusion_order(test_twoNeg)
-test_mse_plotter(test_twoNeg)
-training_mse_plotter(test_twoNeg)
+test_mse_boxplot(test_twoNeg)
+training_mse_boxplot(test_twoNeg)
 ```
 
-```{r, ascii = TRUE}
+```{r, results = "asis"}
+inclusion_order(test_twoNeg)
+coeff_bias(test_twoNeg)
+coeff_variance(test_twoNeg)
+```
+
+```{r}
 test_mse_tables(test_twoNeg)
 training_mse_tables(test_twoNeg)
 ```
 
-### Three Correlated, Step3
 
-Covariance matrix = 
-$\begin{bmatrix} 
-1     & -0.8  & 0.25  & 0 & 0 \\
--0.8  & 1     & -0.75 & 0 & 0 \\
-0.25  & -0.75 & 1     & 0 & 0 \\
-0     & 0     & 0     & 1 & 0 \\
-0     & 0     & 0     & 0 & 1
-\end{bmatrix}$
-
-Model coefficients = 
-$\begin{bmatrix} \text{V1} =1 \\ \text{V2} =1 \\
-\text{V3} =1 \\ \text{V4} =0 \\ \text{V5} = 0 \end{bmatrix}$
+## Model 2 : Three Negatively Correlated
 
 ```{r}
-cov_mat_threeNeg_5 <- rbind( c(1.00, -0.80,  0.25, 0.00, 0.00),
-                    c(-0.80,  1.00, -0.75, 0.00, 0.00),
-                    c( 0.25, -0.75,  1.00, 0.00, 0.00),
-                    c( 0.00,  0.00,  0.00, 1.00, 0),
-                    c( 0.00,  0.00,  0.00, 0, 1.00))
-
-threeNeg_5_coeff <- c(V1 = 1, V2 = 1, V3 = 1, V4 = 0, V5 =0)
-
-test_threeNeg_10 <- normal_test(cov_mat_threeNeg_5, 
-                                coefficients = threeNeg_5_coeff, intercept = 9, 
-                        num_observations = 100, num_simulations = 500,
-                        file_name = "threeNeg.RDS")
+betas_heat_map(threeNeg)
+inclusion_order(threeNeg)
+test_mse_boxplot(threeNeg)
+training_mse_boxplot(threeNeg)
+test_mse_tables(threeNeg)
+training_mse_tables(threeNeg)
+coeff_bias(threeNeg)
+coeff_variance(threeNeg)
 ```
+
+
+## Model 3 : Big p
 
 ```{r}
-betas_heat_map(test_threeNeg_10)
-inclusion_order(test_threeNeg_10)
-test_mse_plotter(test_threeNeg_10)
-training_mse_plotter(test_threeNeg_10)
-test_mse_tables(test_threeNeg_10)
-training_mse_tables(test_threeNeg_10)
+betas_heat_map(big_p)
+test_mse_boxplot(big_p)
+training_mse_boxplot(big_p)
+test_mse_tables(big_p)
+training_mse_tables(big_p)
 ```
 
-
-## Three correlated
-
-Covariance matrix = 
-$\begin{bmatrix} 
-1   & -0.8& 0.25& 0   & 0   & 0 & 0 & 0 & 0 & 0\\
--0.8& 1   &-0.75& 0   & 0   & 0 & 0 & 0 & 0 & 0\\
-0.25&-0.75& 1   & 0   & 0   & 0 & 0 & 0 & 0 & 0\\
-0   & 0   & 0   & 1   &-0.75& 0 & 0 & 0 & 0 & 0\\
-0   & 0   & 0   &-0.75& 1   & 0 & 0 & 0 & 0 & 0 \\
-0   & 0   & 0   & 0   & 0   & 1 & -0.8 & 0.25 & 0 & 0 \\
-0   & 0   & 0   & 0   & 0   &-0.8& 1 & -0.75 & 0 & 0 \\
-0   & 0   & 0   & 0   & 0   &0.25& -0.75 & 1 & 0 & 0 \\
-0   & 0   & 0   & 0   & 0   & 0 & 0 & 0 & 1 & -0.75 \\
-0   & 0   & 0   & 0   & 0   & 0 & 0 & 0 & -0.75 & 1
-\end{bmatrix}$
-
-Coefficients = 
-```{r eval=FALSE, include=FALSE}
-
-test_threeNeg_10 <- normal_test(cov_mat_twoNeg, coefficients_twoNeg, intercept = 9, 
-                        num_observations = 100, num_simulations = 500,
-                        file_name = "twoNeg.RDS")
-
-cov_mat_5 <- rbind( c(1.00, -0.80,  0.25, 0.00, 0.00),
-                    c(-0.80,  1.00, -0.75, 0.00, 0.00),
-                    c( 0.25, -0.75,  1.00, 0.00, 0.00),
-                    c( 0.00,  0.00,  0.00, 1.00, -0.75),
-                    c( 0.00,  0.00,  0.00, -0.75, 1.00))
-
-coefficients_1 <- c(replicate(5, 0), replicate(5, 1))
-cov_mat_10 <- as.matrix(Matrix::bdiag(replicate(2, cov_mat_5, simplify = FALSE)))
-predict_gen <- SelectionSimulator::NormalPredictorsGenerator$new(
-  num_observations = 100,
-  num_predictors = 10,
-  norm_rand_var_sd = 1,
-  covariance_matrix = cov_mat_10)
-
-names(coefficients_1) <- sapply(seq.int(10), function(x) paste0("V", x))
-
-response_calc_1 <- SelectionSimulator::LinearNormalResponseCalculator$new(
-  norm_rand_var_sd = 1,
-  coefficients = coefficients_1,
-  intercept = 9)
-
-sim_data_gen <- SelectionSimulator::SimulationDataGenerator$new(
-  predict_gen, response_calc_1)
+\newpage
 
 
-constructors <- c(
-  Step = SelectionSimulator::StepLmWrapper$new,
-  Step2 = SelectionSimulator::Step2$new,
-  Step3 = SelectionSimulator::Step3$new)
+# Appendix
 
-test_obj <- SelectionSimulator::Simulation$new(sim_data_gen, constructors, 500, 1)
+## Future Inquiries
+The hyperparameters of `cor_cutoff` and etc
+in a general setting were not examined.
+A general recommendation of values for these variables would be useful.
 
-test_obj$simulate()
+
+## Addition Plots
+
+### Model 1
+
+### Model 2
+
+### Model 3
+
+
+## Algorithm Source Code 
+
+### Step 2
+```{r}
+if(knitr::is_html_output()) {
+  print("View source code at https://github.com/riley-ashton/Selection/tree/master/R")
+}
 ```
+\lstinputlisting{../SelectionSimulator/R/Step2.R}
 
-
-```{r eval=FALSE, include=FALSE}
-betas_heat_map(test_obj)
-test_mse_plotter(test_obj)
-training_mse_plotter(test_obj)
-test_mse_tables(test_obj)
-training_mse_tables(test_obj)
-#inclusion_order(test_obj)
+### Step 3
+```{r}
+if(knitr::is_html_output()) {
+  print("View source code at https://github.com/riley-ashton/Selection/tree/master/R")
+}
 ```
-
-## Three correlated
-
-Covariance matrix = 
-$\begin{bmatrix} 
-1 & -0.8 & 0.25 & 0 & 0 \\
--0.8 & 1 & -0.75 & 0 & 0 \\
-0.25 & -0.75 & 1 & 0 & 0 \\
-0 & 0 & 0 & 1 & -0.75 \\
-0 & 0 & 0 & -0.75 & 1
-\end{bmatrix}$
-
-Coefficients = $\begin{bmatrix} 0 \\ 1 \\ 0 \\ 1 \\ 0 \end{bmatrix}$
-```{r eval=FALSE, include=FALSE}
-cov_mat_5 <- rbind( c(1.00, -0.80,  0.25, 0.00, 0.00),
-                    c(-0.80,  1.00, -0.75, 0.00, 0.00),
-                    c( 0.25, -0.75,  1.00, 0.00, 0.00),
-                    c( 0.00,  0.00,  0.00, 1.00, -0.75),
-                    c( 0.00,  0.00,  0.00, -0.75, 1.00))
-
-coefficients_1 <- c(V1 = 0, V2 = 1, V3 = 0, V4 = 1, V5 = 0)
-
-predict_gen <- NormalPredictorsGenerator$new(num_observations = 50,
-                                             num_predictors = 5,
-                                             norm_rand_var_sd = 1,
-                                             covariance_matrix = cov_mat_5)
-
-response_calc_1 <- LinearNormalResponseCalculator$new(norm_rand_var_sd = 1,
-                                                      coefficients = coefficients_1,
-                                                      intercept = 9)
-
-sim_data_gen <- SimulationDataGenerator$new(predict_gen, response_calc_1)
-
-
-constructors <- c(Step = StepLmWrapper$new, Step2 = Step2$new, Step3 = Step3$new)
-
-test_obj <- SelectionSimulator::Simulation$new(sim_data_gen, constructors, 500, 1)
-
-test_obj$simulate()
-
-```
-
-```{r eval=FALSE, include=FALSE}
-betas_heat_map(test_obj)
-#inclusion_order(test_obj)
-test_mse_plotter(test_obj)
-training_mse_plotter(test_obj)
-test_mse_tables(test_obj)
-training_mse_tables(test_obj)
-```
+\lstinputlisting{../SelectionSimulator/R/Step3.R}
