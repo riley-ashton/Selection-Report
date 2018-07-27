@@ -43,9 +43,10 @@ neither variable would be significant on their own.
 Algorithms that consider adding highly negatively correlated variables together,
 and additionally any variables correlated with those are discussed and tested.
 
-## Terminology used
+## Notation used
 
 - p: number of covariates/predictors
+- q: number of nonzero covariates/predictors (i.e. covariates in the model)
 - n: number of observations
 - [AIC: Akaike information criterion](https://en.wikipedia.org/wiki/Akaike_information_criterion)
 - [BIC: Bayes information criterion](https://en.wikipedia.org/wiki/Bayesian_information_criterion)
@@ -66,8 +67,9 @@ the correlation between covariates.
 In the case of highly negatively correlated covariate pairs, Step2 will
 consider the traditional choices of adding a single variable,
 but also the option of adding both negatively correlated 
-covariates to the model. What constitutes a highly negatively pair is
-determined by the parameter `cor_cutoff`. So a cutoff of -0.5 would mean
+covariates to the model (refered to as a block). What constitutes a highly 
+negatively block is determined by the parameter `cor_cutoff`. 
+So a cutoff of -0.5 would mean
 all covariate pairs with a correlation of less than -0.5 (e.g. -0.7) would
 be additionally considered together. They would also be considered as singles,
 as is every other variable not yet included in the model.
@@ -104,7 +106,8 @@ since only the AIC or BIC or each model is stored.
 ### Algorithm Idea
 
 Step3 does everything that Step2 does, but it also considers recursing on the
-pairwise negatively correlated covariates and considering anything highly
+pairwise negatively correlated covariates, i.e. the blocks of Step2,
+and considering anything highly
 correlated with them and then anything highly correlated with those, etc until
 it reaches a block size of `max_block_size`. 
 Additionally, Step3 with a `max_block_size` of 2 is equivalent to Step2. 
@@ -181,7 +184,7 @@ Where $Z_i \sim \mathcal N(\mu = 0, \sigma =  1)$
 
 ## Model 1 : Two negatively correlated
 This model is designed to show the advantage of Step2 over Step
-$$ \text{Covariance} =\begin{bmatrix} 
+$$ \boldsymbol{\Sigma} =\begin{bmatrix} 
 1   &-0.8 & 0 & 0 & 0 & 0 \\
 -0.8& 1   & 0 & 0 & 0 & 0 \\
 0   & 0   & 1 & 0 & 0 & 0 \\
@@ -190,15 +193,14 @@ $$ \text{Covariance} =\begin{bmatrix}
 0   & 0   & 0 & 0 & 0 & 1
 \end{bmatrix} \hspace{10pt}
 \hspace{20pt}
-\text{Coefficients} = \begin{bmatrix} \text{V1} = 1 \\ \text{V2} = 1 \\
-\text{V3} = 0 \\ \text{V4} = 0 \\ \text{V5} = 0 \\ \text{V6} = 0 \end{bmatrix}$$
+\boldsymbol{\beta} = \begin{bmatrix} 1 \\ 1 \\ 1 \\ 0 \\ 0 \\ 0 \end{bmatrix}$$
 
-Number of Observations = 100
+$n$ = 100
 
 ## Model 2: Three Negatively Correlated
 This model is designed to show the advantage of Step3 over Step2 and Step
 
-$$\text{Covariance} = \begin{bmatrix} 
+$$\boldsymbol{\Sigma} = \begin{bmatrix} 
 1     & -0.8  & 0.25  & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
 -0.8  & 1     & -0.75 & 0 & 0& 0 & 0 & 0 & 0 & 0 \\
 0.25  & -0.75 & 1     & 0 & 0& 0 & 0 & 0 & 0 & 0 \\
@@ -212,11 +214,10 @@ $$\text{Covariance} = \begin{bmatrix}
 \end{bmatrix}
 \hspace{10pt}
 \hspace{20pt}
-\text{Coefficients}  = 
-\begin{bmatrix} \text{V1} = 1 \\ \text{V2} = 1 \\
-\text{V3} = 1 \\ \text{V4} =0 \\ \vdots \\ \text{V10} = 0 \\ 
+\boldsymbol{\beta}  = 
+\begin{bmatrix} 1 \\ 1 \\ 1 \\ 0 \\ 0 \\ 0 \\ 0 \\ 0 \\ 0 \\ 0
 \end{bmatrix}$$
-Number of Observations = 100
+$n$ = 100
 
 
 ## Model 3 : Big p
@@ -224,7 +225,7 @@ This model is designed to show the advantages of Step2 and Step3 over Step
 when $p >> n$. Note the covariates V6 through V100 are independent and not
 included in the model.
 
-$$ \text{Covariance} = \begin{bmatrix}
+$$ \boldsymbol \Sigma = \begin{bmatrix}
 1 & -0.8  &  0.25 & 0     & 0     &  0 &\cdots  & 0\\
 -0.8&   1   & -0.4  & 0     & 0     & 0 & \cdots & 0  \\
 0.25& -0.4  &  1    & 0     & 0     & 0 & \cdots  & 0\\
@@ -234,20 +235,11 @@ $$ \text{Covariance} = \begin{bmatrix}
 \vdots & \vdots & \vdots & \vdots & \vdots & \vdots & \ddots & \vdots \\
 0   & 0     & 0     & 0     & 0     &    0 & \cdots & 1 
 \end{bmatrix}
-\hspace{10pt}
-\hspace{20pt}
-\text{Coefficients} = \begin{bmatrix}
-\text{V1} = 1 \\
-\text{V2} = 1 \\
-\text{V3} = 1 \\
-\text{V4} = 1 \\
-\text{V5} = 1 \\
-\text{V6} = 0 \\
-\vdots \\
-\text{V100} = 0 \\
-\end{bmatrix}
+\hspace{10pt} \hspace{20pt}
+\boldsymbol \beta = 
+\begin{bmatrix} 1 \\ 1 \\ 1 \\ 1 \\ 1 \\ 0 \\ \vdots \\ 0 \\ \end{bmatrix}
 $$
-Number of Observations = 50
+$n$ = 50
 
 
 ```{r}
@@ -264,7 +256,9 @@ coefficients_twoNeg <- c(V1 = 1, V2 = 1, V3 = 0, V4 = 0, V5 = 0, V6 = 0)
 test_twoNeg <- normal_test(cov_mat_twoNeg, coefficients_twoNeg, intercept = 9, 
                         num_observations = 100, num_simulations = 1000,
                         file_name = "twoNeg.RDS")
+```
 
+```{r}
 # Model 2 : Three Negatively Correlated
 cov_mat_threeNeg <- Matrix::diag(replicate(10,1))
 cov_mat_threeNeg[[1,2]] <- cov_mat_threeNeg[[2,1]] <- -0.8
@@ -302,16 +296,55 @@ big_p <- normal_test(cov_mat, coefficients, intercept = 9,
 
 ## Model 1 : Two Negatively Correlated
 
+In this case Step3 did not end up selecting any more covariates to add
+to its block inclusion via its recursion, so it was identical to Step2. 
+They were identical since only two
+covariates were highly negatively correlated ($X_1$ and $X_2$) and
+neither $X_1$ nor $X_2$ were highly correlated with any other covariates.
+This meant that Step2 and Step3 considered including $X_1$ and $X_2$ in the
+same step, but did not consider adding any other variables in the
+same step.
+
+Both Step2 and Step3 outperformed Step, since Step often ($\approx 30\%$) 
+selected no covariates to include in the model (i.e. the intercept only model).
+This is due to the highly negative sample correlation ($r \approx -0.8$)
+between $X_1$ and $X_2$.
+
+Since Step did not include $X_1$ and $X_2$ about 40% of the time,
+while Step2 and Step3 included them nearly all the time,
+the variance of the coefficient estimates for $X_1$ and $X_2$ were
+much higher in the Step simulations than in Step2 or Step3.
+
 ```{r}
 betas_heat_map(test_twoNeg)
 test_mse_boxplot(test_twoNeg)
 training_mse_boxplot(test_twoNeg)
 ```
 
+
 ```{r, results = "asis"}
 inclusion_order(test_twoNeg)
 coeff_bias(test_twoNeg)
 coeff_variance(test_twoNeg)
+```
+
+```{r, results = "asis"}
+#sample_cor_matrix(test_twoNeg)
+```
+
+$$\begin{bmatrix}
+X    & -0.9/-0.63 & -0.29/0.29 & -0.35/0.29 & -0.29/0.29 & -0.34/0.31 \\
+-0.9/-0.63 &      X    & -0.33/0.28 & -0.27/0.36 & -0.29/0.32 & -0.42/0.31 \\
+-0.29/0.29 & -0.33/0.28 &      X    & -0.32/0.31 & -0.3/0.3 & -0.32/0.33 \\ 
+-0.35/0.29 & -0.27/0.36 & -0.32/0.31 &      X    & -0.32/0.3 & -0.3/0.33 \\
+-0.29/0.29 & -0.29/0.32 & -0.3/0.3 & -0.32/0.3 &      X    & -0.32/0.35 \\ 
+-0.34/0.31 & -0.42/0.31 & -0.32/0.33 & -0.3/0.33 & -0.32/0.35 &      X
+\end{bmatrix}$$
+
+```{r}
+proportion_included(test_twoNeg)
+only_correct_predictors_included(test_twoNeg)
+at_least_correct_predictors_included(test_twoNeg)
 ```
 
 ```{r}
@@ -372,7 +405,7 @@ if(knitr::is_html_output()) {
   print("View source code at https://github.com/riley-ashton/Selection/tree/master/R")
 }
 ```
-\lstinputlisting{../Selection/R/Step2.R}
+\lstinputlisting{../SelectionSimulator/R/Step2.R}
 
 ### Step 3
 ```{r}
@@ -380,4 +413,4 @@ if(knitr::is_html_output()) {
   print("View source code at https://github.com/riley-ashton/Selection/tree/master/R")
 }
 ```
-\lstinputlisting{../Selection/R/Step3.R}
+\lstinputlisting{../SelectionSimulator/R/Step3.R}
