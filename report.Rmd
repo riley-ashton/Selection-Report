@@ -4,6 +4,7 @@ author : "Riley Ashton"
 header-includes:
    - \usepackage{listings}
    - \usepackage{color}
+   - \usepackage{mathtools}
 output:
   pdf_document:
     highlight: pygments
@@ -23,6 +24,7 @@ library(ggplot2); theme_set(theme_minimal())
 library(dplyr)
 source("./simulations/normal_test.R")
 set.seed(7882)
+cpu_threads <- 12 # Windows users set this to 1
 ```
 
 \newpage
@@ -227,8 +229,8 @@ included in the model.
 
 $$ \boldsymbol \Sigma = \begin{bmatrix}
 1 & -0.8  &  0.25 & 0     & 0     &  0 &\cdots  & 0\\
--0.8&   1   & -0.4  & 0     & 0     & 0 & \cdots & 0  \\
-0.25& -0.4  &  1    & 0     & 0     & 0 & \cdots  & 0\\
+-0.8&   1   & -0.5  & 0     & 0     & 0 & \cdots & 0  \\
+0.25& -0.5  &  1    & 0     & 0     & 0 & \cdots  & 0\\
 0   &  0    &  0    & 1     & -0.75 & 0 & \cdots & 0\\
 0   &  0    &  0    & -0.75 & 1     &  0 & \cdots & 0\\
 0   & 0     & 0     & 0     & 0     &   1  &\cdots & 0\\
@@ -242,7 +244,7 @@ $$
 $n$ = 50
 
 
-```{r}
+```{r models}
 # Model 1 : Two Negatively Correlated
 cov_mat_twoNeg <- rbind(c( 1.00,  -0.8,  0.00, 0.00, 0.00, 0.00),
                         c( -0.8,  1.00,  0.00, 0.00, 0.00, 0.00),
@@ -251,43 +253,41 @@ cov_mat_twoNeg <- rbind(c( 1.00,  -0.8,  0.00, 0.00, 0.00, 0.00),
                         c( 0.00,  0.00,  0.00, 0.00, 1.00, 0.00),
                         c( 0.00,  0.00,  0.00, 0.00, 0.00, 1.00))
 
-coefficients_twoNeg <- c(V1 = 1, V2 = 1, V3 = 0, V4 = 0, V5 = 0, V6 = 0)
+coefficients_twoNeg <- c(X1 = 1, X2 = 1, X3 = 0, X4 = 0, X5 = 0, X6 = 0)
 
 test_twoNeg <- normal_test(cov_mat_twoNeg, coefficients_twoNeg, intercept = 9, 
                         num_observations = 100, num_simulations = 1000,
-                        file_name = "twoNeg.RDS")
-```
+                        file_name = "twoNeg.RDS", cpu_threads)
 
-```{r}
 # Model 2 : Three Negatively Correlated
 cov_mat_threeNeg <- Matrix::diag(replicate(10,1))
 cov_mat_threeNeg[[1,2]] <- cov_mat_threeNeg[[2,1]] <- -0.8
 cov_mat_threeNeg[[3,2]] <- cov_mat_threeNeg[[2,3]] <- -0.75
 cov_mat_threeNeg[[3,1]] <- cov_mat_threeNeg[[1,3]] <- 0.25
 
-threeNeg_coeff <- c(V1 = 1, V2 = 1, V3 = 1, V4 = 0, V5 =0,
-                      V6 = 0, V7 =0, V8 = 0, V9 = 0, V10 = 0)
+threeNeg_coeff <- c(X1 = 1, X2 = 1, X3 = 1, X4 = 0, X5 =0,
+                      X6 = 0, X7 =0, X8 = 0, X9 = 0, X10 = 0)
 
 threeNeg <- normal_test(cov_mat_threeNeg, 
                         coefficients = threeNeg_coeff, intercept = 9, 
                         num_observations = 100, num_simulations = 1000,
-                        file_name = "threeNeg.RDS")
+                        file_name = "threeNeg.RDS", cpu_threads)
 
 # Model 3 : Big P
 top_left <- rbind( c(1.00, -0.80,  0.25, 0.00, 0.00),
-                    c(-0.80,  1.00, -0.4, 0.00, 0.00),
-                    c( 0.25, -0.4,  1.00, 0.00, 0.00),
+                    c(-0.80,  1.00, -0.5, 0.00, 0.00),
+                    c( 0.25, -0.5,  1.00, 0.00, 0.00),
                     c( 0.00,  0.00,  0.00, 1.00, -0.75),
                     c( 0.00,  0.00,  0.00, -0.75, 1.00))
 
 cov_mat <- as.matrix(Matrix::bdiag(top_left, diag(replicate(95,1))))
 
 coefficients <- c(replicate(5,1), replicate(95, 0))
-names(coefficients) <- sapply(1:100, function(x) paste0("V", x))
+names(coefficients) <- sapply(1:100, function(i) paste0("X", i))
 
 big_p <- normal_test(cov_mat, coefficients, intercept = 9, 
-                     num_observations = 50, num_simulations = 100,
-                     file_name = "big_p.RDS")
+                     num_observations = 50, num_simulations = 1000,
+                     file_name = "big_p.RDS", cpu_threads)
 ```
 
 \newpage
@@ -315,70 +315,280 @@ while Step2 and Step3 included them nearly all the time,
 the variance of the coefficient estimates for $X_1$ and $X_2$ were
 much higher in the Step simulations than in Step2 or Step3.
 
-```{r}
+```{r two_neg_plot_1}
 betas_heat_map(test_twoNeg)
-test_mse_boxplot(test_twoNeg)
-training_mse_boxplot(test_twoNeg)
 ```
 
+Here the heat map for the first 100 simulations and the values of the model
+coefficients are shown. Note that black is shown for NA values, meaning
+that coefficient was not selected in that simulation. Step often misses both
+X1 and X2, while Step2 and Step3 nearly always include both of these variables.
 
-```{r, results = "asis"}
-inclusion_order(test_twoNeg)
+
+******
+
+
+```{r}
+proportion_included(test_twoNeg)
+```
+
+The table above shows the proportion of times that each algorithm selected
+a given covariate. Step did not select X1 or X2 over a third of the time.
+Step2 and Step3 nearly always selected X1 and X2.
+
+[In the appendix is the proportion of times that each algorithm selected the correct model.](#model-1) 
+
+```{r}
 coeff_bias(test_twoNeg)
 coeff_variance(test_twoNeg)
 ```
 
-```{r, results = "asis"}
-#sample_cor_matrix(test_twoNeg)
+The bias of the fitted coefficients $\text{bias}_{\beta_j} = \left(\frac{1}{n} \sum_{i=1}^n \beta_{ij} \right) - \left( \frac{1}{n} \sum_{i=1}^n \hat \beta_{ij} \right)$
+is greatly reduced for X1 and X2 under Step2 and Step3 compared to Step.
+
+The variance of the fitted values for X1 and X2 is also reduced since Step included
+X1 and X2 about 60% of the time
+
+
+******
+
+
+```{r two_neg_coeff}
+inclusion_order(test_twoNeg, pdf_head = 5)
+```
+
+The above tables show 5 most commonly occuring orders that each variable was included.
+[The full tables are available in the appendix.](#model-1)
+Note that the character | delineates the choices between each step and
+|| denotes the termination of the selection algorithm.
+
+For example, || denotes the algorithm terminated without selecting any variables,
+while X1X2 | X3 || means the algorithm selected both X1 and X2 in the first step,
+X3 in the second step and then terminated.
+
+Step2 and Step3 are identical, as explained at the start of the section.
+Step did not select any variables 29% of the time. In all but 2/1000 cases
+Step2 and Step3 always selected X1 and X2 together. It is ability to include highly
+negatively correlated covariates together that makes Step2 and Step3 ideal
+in this type of case with high pairwise negative correlations.
+
+
+```{r eval=FALSE, include=FALSE}
+# Must be manually updated if simulation changes
+sample_cor_matrix(test_twoNeg)
 ```
 
 $$\begin{bmatrix}
-X    & -0.9/-0.63 & -0.29/0.29 & -0.35/0.29 & -0.29/0.29 & -0.34/0.31 \\
--0.9/-0.63 &      X    & -0.33/0.28 & -0.27/0.36 & -0.29/0.32 & -0.42/0.31 \\
--0.29/0.29 & -0.33/0.28 &      X    & -0.32/0.31 & -0.3/0.3 & -0.32/0.33 \\ 
--0.35/0.29 & -0.27/0.36 & -0.32/0.31 &      X    & -0.32/0.3 & -0.3/0.33 \\
--0.29/0.29 & -0.29/0.32 & -0.3/0.3 & -0.32/0.3 &      X    & -0.32/0.35 \\ 
--0.34/0.31 & -0.42/0.31 & -0.32/0.33 & -0.3/0.33 & -0.32/0.35 &      X
-\end{bmatrix}$$
+  X    & -0.89/-0.67 & -0.28/0.3 & -0.38/0.35 & -0.38/0.3 & -0.31/0.34 \\ -0.89/-0.67 &      X    & -0.33/0.34 & -0.31/0.32 & -0.3/0.37 & -0.25/0.34 \\ -0.28/0.3 & -0.33/0.34 &      X    & -0.39/0.31 & -0.32/0.3 & -0.3/0.36 \\ -0.38/0.35 & -0.31/0.32 & -0.39/0.31 &      X    & -0.38/0.29 & -0.29/0.3 \\ -0.38/0.3 & -0.3/0.37 & -0.32/0.3 & -0.38/0.29 &      X    & -0.34/0.29 \\ -0.31/0.34 & -0.25/0.34 & -0.3/0.36 & -0.29/0.3 & -0.34/0.29 &      X \end{bmatrix}$$
 
-```{r}
-proportion_included(test_twoNeg)
-only_correct_predictors_included(test_twoNeg)
-at_least_correct_predictors_included(test_twoNeg)
+
+The above matrix shows the sample pairwise correlation matrix of all the simulations.
+looking at the first off diagonal entry of  $-0.89/-0.67$ means that the minimum
+sample pairwise correlation between $X1$ and $X2$ was $-0.89$, while the maximum
+was $-0.67$. This shows that, for all simulations,
+Step2 and Step3 would choose to include $X1$ and
+$X2$ together, but would not do so for any other variables.
+
+
+
+******
+
+
+```{r two_neg_tables}
+test_mse2kable(test_twoNeg)
+training_mse2kable(test_twoNeg)
 ```
 
-```{r}
-test_mse_tables(test_twoNeg)
-training_mse_tables(test_twoNeg)
+``` {r echo=FALSE}
+X_test <- test_mse2dataframe(test_twoNeg)
+reduction_test <- (X_test["Step", "Mean"] - X_test["Step2", "Mean"]) / X_test["Step", "Mean"]
+reduction_test <- round(reduction_test, digits = 3)
+
+X_train <- training_mse2dataframe(test_twoNeg)
+reduction_train <- (X_train["Step", "Mean"] - X_train["Step2", "Mean"]) / X_train["Step", "Mean"]
+reduction_train <- round(reduction_train, digits = 3)
 ```
+
+The above tables show the test and training MSE from each algorithm.
+Step2 and Step3 are, again, identical. Step2 and Step3 reduced the training
+MSE and test MSE  compared to Step by `r paste0(100 * reduction_train, "%")` 
+and `r paste0(100 * reduction_test, "%")`, respectively.
+
+
+[Boxplots test and training MSE located in appendix](#model-1)
+
+
+\newpage
 
 
 ## Model 2 : Three Negatively Correlated
 
+In addition to examing singles, like Step, Step2 and Step3 would examine pairs of X1, X2 and X3.
+Finally Step3 would additionally consider adding X1, X2 and X3 all together.
+This results in Step2 having better results than Step and Step3 having
+better results than Step2.
+
 ```{r}
 betas_heat_map(threeNeg)
-inclusion_order(threeNeg)
-test_mse_boxplot(threeNeg)
-training_mse_boxplot(threeNeg)
-test_mse_tables(threeNeg)
-training_mse_tables(threeNeg)
+```
+
+Examining the heat map of fitted coefficients, all algorithms have difficulty
+selecting all the correct covariates. This is an especially difficult
+correlation structure. However Step3 does a visibly better job at selecting
+all of X1, X2 and X3 compared to Step and Step2.
+
+
+******
+
+
+```{r}
+proportion_included(threeNeg)
+```
+
+The table above shows the proportion of times that each algorithm selected
+a given covariate. Step had very poor performance in selecting
+X1 and X3, about a fifth and a third of the time respectively.
+Step2 offered slght improvements with these two variables, but Step3
+showed a marked improvement selecting both X1 and X3 compared to Step or Step2.
+
+It is also worth noting that Step2 and Step3 performed better in selecting X2
+over Step. This suggests that X2 is not always significant by itself. [In the appendix is the proportion of times that each algorithm selected the correct model.](#model-2) 
+
+```{r}
 coeff_bias(threeNeg)
 coeff_variance(threeNeg)
 ```
 
+Step2 reduces the bias of X1, X2 and X3, but suffers greater fitted coefficient variance
+compared to Step. Step3 further reduces the bias of X1, X2 and X3, 
+but suffers greater fitted coefficient variance
+compared to Step2. The increase in variance is most likely due to the fact that
+the proportion that X1 and X3 are selected approaches 50% with Step3.
+Additionally the proportion that Step3 selected at least the correct covariates,
+or the correct model is far closer to 50% compared to Step. [These two tables are
+in the appendix.](#model-2)
 
-## Model 3 : Big p
+
+******
+\newpage
 
 ```{r}
-betas_heat_map(big_p)
-test_mse_boxplot(big_p)
-training_mse_boxplot(big_p)
-test_mse_tables(big_p)
-training_mse_tables(big_p)
+inclusion_order(threeNeg)
 ```
+
+Step3 shows its recursive ability here by including X1, X2 and X3 together
+in one single step.
+
+$$\begin{psmallmatrix}
+X    & -0.9/-0.63 & -0.12/0.54 & -0.31/0.35 & -0.28/0.3 & -0.32/0.3 & -0.33/0.32 & -0.35/0.33 & -0.35/0.3 & -0.28/0.34 \\ -0.9/-0.63 &      X    & -0.86/-0.62 & -0.29/0.28 & -0.33/0.3 & -0.27/0.33 & -0.28/0.32 & -0.27/0.31 & -0.29/0.29 & -0.3/0.3 \\ -0.12/0.54 & -0.86/-0.62 &      X    & -0.43/0.29 & -0.27/0.32 & -0.33/0.29 & -0.34/0.35 & -0.33/0.26 & -0.33/0.34 & -0.33/0.29 \\ -0.31/0.35 & -0.29/0.28 & -0.43/0.29 &      X    & -0.35/0.3 & -0.34/0.29 & -0.3/0.36 & -0.27/0.31 & -0.31/0.29 & -0.36/0.25 \\ -0.28/0.3 & -0.33/0.3 & -0.27/0.32 & -0.35/0.3 &      X    & -0.41/0.33 & -0.36/0.35 & -0.3/0.31 & -0.29/0.38 & -0.28/0.3 \\ -0.32/0.3 & -0.27/0.33 & -0.33/0.29 & -0.34/0.29 & -0.41/0.33 &      X    & -0.32/0.34 & -0.28/0.32 & -0.35/0.3 & -0.32/0.3 \\ -0.33/0.32 & -0.28/0.32 & -0.34/0.35 & -0.3/0.36 & -0.36/0.35 & -0.32/0.34 &      X    & -0.4/0.28 & -0.33/0.31 & -0.31/0.32 \\ -0.35/0.33 & -0.27/0.31 & -0.33/0.26 & -0.27/0.31 & -0.3/0.31 & -0.28/0.32 & -0.4/0.28 &      X    & -0.32/0.27 & -0.3/0.34 \\ -0.35/0.3 & -0.29/0.29 & -0.33/0.34 & -0.31/0.29 & -0.29/0.38 & -0.35/0.3 & -0.33/0.31 & -0.32/0.27 &      X    & -0.31/0.34 \\ -0.28/0.34 & -0.3/0.3 & -0.33/0.29 & -0.36/0.25 & -0.28/0.3 & -0.32/0.3 & -0.31/0.32 & -0.3/0.34 & -0.31/0.34 &      X \end{psmallmatrix}$$
+
+
+
+```{r eval=FALSE, include=FALSE}
+# Must be manually updated if simulation changes
+sample_cor_matrix(threeNeg)
+```
+
+Step3 always had the option to include X1, X2 and X3 together.
+
+
+******
+\newpage
+
+```{r threeNeg_tables}
+test_mse2kable(threeNeg)
+training_mse2kable(threeNeg)
+```
+
+``` {r echo=FALSE}
+X_test <- test_mse2dataframe(threeNeg)
+reduction_test <- (X_test["Step", "Mean"] - X_test["Step3", "Mean"]) / X_test["Step", "Mean"]
+reduction_test <- round(reduction_test, digits = 3)
+
+X_train <- training_mse2dataframe(threeNeg)
+reduction_train <- (X_train["Step", "Mean"] - X_train["Step3", "Mean"]) / X_train["Step", "Mean"]
+reduction_train <- round(reduction_train, digits = 3)
+```
+
+Step2 and Step had similar performance, due to the complex correlation structure.
+Step3 took advantage of its recursive ability here. Step3 reduced the training
+MSE and test MSE  compared to Step by `r paste0(100 * reduction_train, "%")` 
+and `r paste0(100 * reduction_test, "%")`, respectively.
+
+
+[Boxplots test and training MSE located in appendix](#model-2)
+
 
 \newpage
 
+
+## Model 3 : Big p
+In this simulation $p >> n$ so the curse of dimensionality is apparent. 
+Yet Step3 and Step2 still make improvements on Step.
+
+```{r}
+only_correct_predictors_included(big_p)
+```
+
+There was so much noise that none of the algorithms ever selected the
+correct model.
+
+
+```{r}
+at_least_correct_predictors_included(big_p)
+```
+
+When judging algorithms on including at least the covariates of the correct model,
+Step3 did the best followed by Step2 and then Step.
+
+
+
+******
+
+
+```{r}
+test_mse2kable(big_p)
+training_mse2kable(big_p)
+```
+
+The median value of 0 for training MSE is not surprising, since it is
+easy to fit a perfect training model in the case of $p >> n$. 
+
+
+``` {r echo=FALSE}
+X_test <- test_mse2dataframe(big_p)
+reduction_test <- (X_test["Step", "Mean"] - X_test["Step2", "Mean"]) / X_test["Step", "Mean"]
+reduction_test <- round(reduction_test, digits = 3)
+
+X_train <- training_mse2dataframe(big_p)
+reduction_train <- (X_train["Step", "Mean"] - X_train["Step2", "Mean"]) / X_train["Step", "Mean"]
+reduction_train <- round(reduction_train, digits = 3)
+```
+
+Step2 reduced the training
+MSE and test MSE  compared to Step by `r paste0(100 * reduction_train, "%")` 
+and `r paste0(100 * reduction_test, "%")`, respectively.
+
+``` {r echo=FALSE}
+X_test <- test_mse2dataframe(big_p)
+reduction_test <- (X_test["Step", "Mean"] - X_test["Step3", "Mean"]) / X_test["Step", "Mean"]
+reduction_test <- round(reduction_test, digits = 3)
+
+X_train <- training_mse2dataframe(big_p)
+reduction_train <- (X_train["Step", "Mean"] - X_train["Step3", "Mean"]) / X_train["Step", "Mean"]
+reduction_train <- round(reduction_train, digits = 3)
+```
+
+Step3 reduced the training
+MSE and test MSE  compared to Step by `r paste0(100 * reduction_train, "%")` 
+and `r paste0(100 * reduction_test, "%")`, respectively.
+
+[Boxplots test and training MSE located in appendix](#model-3)
+
+
+
+
+\newpage
 
 # Appendix
 
@@ -388,16 +598,108 @@ in a general setting were not examined.
 A general recommendation of values for these variables would be useful.
 
 
-## Addition Plots
+## Additional Tables & Plots
 
 ### Model 1
+```{r}
+only_correct_predictors_included(test_twoNeg)
+```
+
+```{r}
+at_least_correct_predictors_included(test_twoNeg)
+```
+
+
+*******
+\newpage
+
+
+```{r}
+inclusion_order(test_twoNeg, pdf_head = 40)
+```
+
+
+****** 
+\newpage
+
+
+```{r}
+training_mse_boxplot(test_twoNeg)
+```
+
+
+******
+\newpage
+
+
+```{r}
+test_mse_boxplot(test_twoNeg)
+```
+
+
+\newpage
 
 ### Model 2
+```{r}
+only_correct_predictors_included(threeNeg)
+```
+
+```{r}
+at_least_correct_predictors_included(threeNeg)
+```
+
+
+*****
+\newpage
+
+
+```{r}
+inclusion_order(threeNeg, pdf_head = 40)
+```
+
+
+*****
+\newpage
+
+
+```{r}
+training_mse_boxplot(threeNeg)
+```
+
+
+*****
+\newpage
+
+
+```{r}
+test_mse_boxplot(threeNeg)
+```
+
+
+\newpage
+
 
 ### Model 3
 
+```{r}
+training_mse_boxplot(big_p)
+```
+
+
+*****
+\newpage
+
+
+```{r}
+test_mse_boxplot(big_p)
+```
+
+
+\newpage 
 
 ## Algorithm Source Code 
+
+\newpage
 
 ### Step 2
 ```{r}
@@ -405,7 +707,7 @@ if(knitr::is_html_output()) {
   print("View source code at https://github.com/riley-ashton/Selection/tree/master/R")
 }
 ```
-\lstinputlisting{../SelectionSimulator/R/Step2.R}
+\lstinputlisting{../../Selection/R/Step2.R}
 
 ### Step 3
 ```{r}
@@ -413,4 +715,4 @@ if(knitr::is_html_output()) {
   print("View source code at https://github.com/riley-ashton/Selection/tree/master/R")
 }
 ```
-\lstinputlisting{../SelectionSimulator/R/Step3.R}
+\lstinputlisting{../../Selection/R/Step3.R}
