@@ -52,6 +52,9 @@ and additionally any variables correlated with those are discussed and tested.
 - [AIC: Akaike information criterion](https://en.wikipedia.org/wiki/Akaike_information_criterion)
 - [BIC: Bayes information criterion](https://en.wikipedia.org/wiki/Bayesian_information_criterion)
 - Step: name used for [traditional stepwise regression](https://en.wikipedia.org/wiki/Stepwise_regression) in this paper
+- $\mathcal{O}$ refers to [Big O notation](https://en.wikipedia.org/wiki/Big_O_notation).
+Formally $f(n) = \mathcal{O}(g(n))$ is defined as 
+$\exists k > 0 \, ,  \exists n_0  \, , \forall n > n_0 \, , |f(n)| \leq k \cdot g(n)$
 
 
 \newpage
@@ -73,14 +76,16 @@ negatively block is determined by the parameter `cor_cutoff`.
 So a cutoff of -0.5 would mean
 all covariate pairs with a correlation of less than -0.5 (e.g. -0.7) would
 be additionally considered together. They would also be considered as singles,
-as is every other variable not yet included in the model.
+as is every other variable not yet included in the model. In this report a 
+`cor_cutoff` of -0.5 is used.
 
 While both Step and Step2 are greedy algorithms, Step2 looks two steps
 ahead at highly negatively correlated covariate pairs.
 
 AIC or BIC is used as the metric for deciding which of the possible models
 is the best at each step. This is controlled by the parameter `k`.
-`k` = 2 means AIC is used and `k` = $log_e (n)$ means BIC by Step2
+`k` = 2 means AIC is used and `k` = $log_e (n)$ means BIC by Step2.
+In this report $k=\log_e(n)$ or BIC is used.
 
 \newpage
 
@@ -121,7 +126,7 @@ loop
 	end if
 
 	let X = fit a glm to the data for each formula in next_formulas
-	let min_info_crit = the minimum of the information criterion for the models in X
+	let min_info_crit = the minimum information criterion for the models in X
 	let min_formula = the formula corresponding to the model with the min_info_crit
 
 	if(min_formula in past_formulas)
@@ -144,8 +149,9 @@ end loop
 ### Time and Space Complexity vs Step
 
 The time complexity of the algorithm depends heavily on the choice of
-`cor_cutoff`. The tradeoff is between a more accurate model and a longer
-run time. The returns in model accuracy, to `cor_cutoff` closer to zero, decrease
+`cor_cutoff`. The tradeoff is between model that is potentially more accurate
+and a longer run time. 
+The returns in model accuracy, to `cor_cutoff` closer to zero, decrease
 rapidly. Step rarely has a problem with only slightly negative correlated variables,
 so there is little for Step2 to improve on in those situations.
 
@@ -180,7 +186,7 @@ are set by the two parameters `recursive_cor_positive_cutoff` and
 - Let $\text{RCP}$ be a short-form for `recursive_cor_positive_cutoff`
 - Let $r(x_1,x_2)$ denote the sample correlation between $x_1$ and $x_2$
 - Let $S_1$ denote the set of covariates
-- Then $S_2$ denoting the set of pairs $(x_1,x_2)$ is defined as 
+- Then $S_2$ denoting the set of highly negatively correlated pairs $(x_1,x_2)$ is defined as 
 $$S_2 = \{(x_1, x_2) | x_1 \in S_1 \land x_2 \in S_1 \land x_1 \neq x_2 \land  r(x_1,x_2) < \text{CC} \}$$
 - Then $S_3$ denoting the set of triples $(x_1,x_2,x_3)$ is defined as
 $$S_3 = \{ (x_1, x_2, x_3) | (x_1,x_2) \in S_2 \, \land x_3 \, \in S_1 \,  \land \,  x_3 \notin (x_1, x_2) \land  \left(\text{block } x_1 \, x_2 \, x_3 \right) \}$$
@@ -209,7 +215,7 @@ and unlimited recursion depth, Step3 will preform all subsets regression.
 All subsets regression has an exponential time complexity in the number of covariates.
 
 The worst case space and time complexity for a `max_block_size` of $\text{mbs}$ is
-$\sim p ^ {(\text{mbs}-1)}$ times greater than Step.
+$\mathcal O\left( p ^ {(\text{mbs}-1)}\right)$ times greater than Step.
 With proper choices of cutoffs the time and space complexity is expected
 to be within a constant of Step. 
 
@@ -265,7 +271,7 @@ $$ \boldsymbol{\Sigma} =\begin{bmatrix}
 0   & 0   & 0 & 0 & 0 & 1
 \end{bmatrix} \hspace{10pt}
 \hspace{20pt}
-\boldsymbol{\beta} = \begin{bmatrix} 1 \\ 1 \\ 1 \\ 0 \\ 0 \\ 0 \end{bmatrix}$$
+\boldsymbol{\beta} = \begin{bmatrix} 1 \\ 1 \\ 0 \\ 0 \\ 0 \\ 0 \end{bmatrix}$$
 
 $n$ = 100
 
@@ -294,8 +300,8 @@ $n$ = 100
 
 ## Model 3 : Big p
 This model is designed to show the advantages of Step2 and Step3 over Step
-when $p >> n$. Note the covariates V6 through V100 are independent and not
-included in the model.
+when $p >> n$. Note the covariates V6 through V100 are independent and do not
+contribute to the response ($\beta_i = 0$ for $i \in [6..100]$).
 
 $$ \boldsymbol \Sigma = \begin{bmatrix}
 1 & -0.8  &  0.25 & 0     & 0     &  0 &\cdots  & 0\\
@@ -329,7 +335,7 @@ big_p <- readRDS("./simulations/big_p.RDS")
 In this case Step3 did not end up selecting any more covariates to add
 to its block inclusion via its recursion, so it was identical to Step2. 
 They were identical since only two
-covariates were highly negatively correlated ($X_1$ and $X_2$) and
+covariates were high negatively correlated ($X_1$ and $X_2$) and
 neither $X_1$ nor $X_2$ were highly correlated with any other covariates.
 This meant that Step2 and Step3 considered including $X_1$ and $X_2$ in the
 same step, but did not consider adding any other variables in the
@@ -350,7 +356,7 @@ betas_heat_map(twoNeg)
 ```
 
 Here the heat map for the first 100 simulations and the values of the model
-coefficients are shown. Note that black is shown for NA values, meaning
+coefficients are shown. Note that NA values are shown as black, meaning
 that coefficient was not selected in that simulation. Step often misses both
 X1 and X2, while Step2 and Step3 nearly always include both of these variables.
 
@@ -362,9 +368,9 @@ X1 and X2, while Step2 and Step3 nearly always include both of these variables.
 proportion_included(twoNeg)
 ```
 
-The table above shows the proportion of times that each algorithm selected
+Table 1 shows the proportion of times that each algorithm selected
 a given covariate. Step did not select X1 or X2 over a third of the time.
-Step2 and Step3 nearly always selected X1 and X2.
+Step2 and Step3 nearly always select X1 and X2.
 
 [In the appendix is the proportion of times that each algorithm selected the correct model.](#model-1) 
 
@@ -373,10 +379,10 @@ coeff_bias(twoNeg)
 coeff_variance(twoNeg)
 ```
 
-The bias of the fitted coefficients $\text{bias}_{\beta_j} = \left(\frac{1}{n} \sum_{i=1}^n \beta_{ij} \right) - \left( \frac{1}{n} \sum_{i=1}^n \hat \beta_{ij} \right)$
+The bias of the fitted coefficients $\text{bias}_{\beta_j} = \left(\frac{1}{n} \sum_{i=1}^n \beta_{ij} \right) - \left( \frac{1}{n} \sum_{i=1}^n \hat \beta_{ij} \right)$, shown in Table 2,
 is greatly reduced for X1 and X2 under Step2 and Step3 compared to Step.
 
-The variance of the fitted values for X1 and X2 is also reduced since Step included
+The variance of the fitted values for X1 and X2, shown in Table 3 is also reduced since Step included
 X1 and X2 about 60% of the time
 
 
@@ -387,9 +393,10 @@ X1 and X2 about 60% of the time
 inclusion_order(twoNeg, pdf_head = 5)
 ```
 
-The above tables show 5 most commonly occuring orders that each variable was included.
+Table 4 shows the 5 most commonly occuring orders that each variable was included,
+by each stepwise algorithm.
 [The full tables are available in the appendix.](#model-1)
-Note that the character | delineates the choices between each step and
+Note that the character | delineates the steps of the selection algorithm and
 || denotes the termination of the selection algorithm.
 
 For example, || denotes the algorithm terminated without selecting any variables,
@@ -397,8 +404,8 @@ while X1X2 | X3 || means the algorithm selected both X1 and X2 in the first step
 X3 in the second step and then terminated.
 
 Step2 and Step3 are identical, as explained at the start of the section.
-Step did not select any variables 29% of the time. In all but 2/1000 cases
-Step2 and Step3 always selected X1 and X2 together. It is ability to include highly
+Step did not select any variables over a quarter of the time. In nearly all cases,
+Step2 and Step3 selected X1 and X2 together. It is ability to include highly
 negatively correlated covariates together that makes Step2 and Step3 ideal
 in this type of case with high pairwise negative correlations.
 
@@ -416,8 +423,8 @@ The above matrix shows the sample pairwise correlation matrix of all the simulat
 looking at the first off diagonal entry of  $-0.89/-0.67$ means that the minimum
 sample pairwise correlation between $X1$ and $X2$ was $-0.89$, while the maximum
 was $-0.67$. This shows that, for all simulations,
-Step2 and Step3 would choose to include $X1$ and
-$X2$ together, but would not do so for any other variables.
+Step2 and Step3 would have the option of including $X1$ and
+$X2$ together, but would not have the option to do so for any other variables.
 
 
 
@@ -439,13 +446,13 @@ reduction_train <- (X_train["Step", "Mean"] - X_train["Step2", "Mean"]) / X_trai
 reduction_train <- round(reduction_train, digits = 3)
 ```
 
-The above tables show the test and training MSE from each algorithm.
+Table 5 and Table 6 show the test and training MSE from each algorithm.
 Step2 and Step3 are, again, identical. Step2 and Step3 reduced the training
 MSE and test MSE  compared to Step by `r paste0(100 * reduction_train, "%")` 
 and `r paste0(100 * reduction_test, "%")`, respectively.
 
 
-[Boxplots test and training MSE located in appendix](#model-1)
+[Boxplots of test and training MSE are located in the appendix](#model-1)
 
 
 \newpage
@@ -464,7 +471,7 @@ betas_heat_map(threeNeg)
 
 Examining the heat map of fitted coefficients, all algorithms have difficulty
 selecting all the correct covariates. This is an especially difficult
-correlation structure. However Step3 does a visibly better job at selecting
+correlation structure. However Step3 does a considerably better job at selecting
 all of X1, X2 and X3 compared to Step and Step2.
 
 
@@ -475,28 +482,30 @@ all of X1, X2 and X3 compared to Step and Step2.
 proportion_included(threeNeg)
 ```
 
-The table above shows the proportion of times that each algorithm selected
+Table 7 shows the proportion of times that each algorithm selected
 a given covariate. Step had very poor performance in selecting
 X1 and X3, about a fifth and a third of the time respectively.
 Step2 offered slght improvements with these two variables, but Step3
 showed a marked improvement selecting both X1 and X3 compared to Step or Step2.
 
 It is also worth noting that Step2 and Step3 performed better in selecting X2
-over Step. This suggests that X2 is not always significant by itself. [In the appendix is the proportion of times that each algorithm selected the correct model.](#model-2) 
+over Step. This suggests that X2 was not always significant by itself.
+
+[In the appendix is the proportion of times that each algorithm selected the correct model.](#model-2) 
 
 ```{r}
 coeff_bias(threeNeg)
 coeff_variance(threeNeg)
 ```
 
-Step2 reduces the bias of X1, X2 and X3, but suffers greater fitted coefficient variance
-compared to Step. Step3 further reduces the bias of X1, X2 and X3, 
+Step2 reduces the bias of X1, X2 and X3 (Table 8), but suffers greater fitted coefficient variance
+compared to Step (Table 9). Step3 further reduces the bias of X1, X2 and X3, 
 but suffers greater fitted coefficient variance
 compared to Step2. The increase in variance is most likely due to the fact that
-the proportion that X1 and X3 are selected approaches 50% with Step3.
-Additionally the proportion that Step3 selected at least the correct covariates,
-or the correct model is far closer to 50% compared to Step. [These two tables are
-in the appendix.](#model-2)
+the proportion that X1 and X3 are selected approaches 50% with Step3 (Table 7).
+Additionally the proportion that Step3 selected at least the correct covariates (Table 21),
+or the correct model (Table 20) is far closer to 50% compared to Step. 
+[These two tables, Table 20 and Table 21, are in the appendix.](#model-2)
 
 
 ******
@@ -506,7 +515,7 @@ in the appendix.](#model-2)
 inclusion_order(threeNeg)
 ```
 
-Step3 shows its recursive ability here by including X1, X2 and X3 together
+In Table 10, Step3 shows its recursive ability here by including X1, X2 and X3 together
 in one single step.
 
 $$\begin{psmallmatrix}
@@ -542,8 +551,16 @@ reduction_train <- (X_train["Step", "Mean"] - X_train["Step3", "Mean"]) / X_trai
 reduction_train <- round(reduction_train, digits = 3)
 ```
 
-Step2 and Step had similar performance, due to the complex correlation structure.
-Step3 took advantage of its recursive ability here. Step3 reduced the training
+As evidenced by Table 11 and Table 12, Step2 and Step had similar performance.
+Step2 had only slightly better test and training MSE than Step.
+The similar performance, between Step and Step2, is most likely due to the
+complex correlation structure of the covariates. Step2 is only designed to handle
+high levels of correlation between 2 covariates at a time, but the correlation
+structure here involves 3 covariates (X1, X2 and X3),  so Step2's performance is less
+than optimal. Step3, being designed to handle complex correlation structures
+with its recursive ability, improved upon the performance of Step and Step2.
+
+Step3 reduced the training
 MSE and test MSE  compared to Step by `r paste0(100 * reduction_train, "%")` 
 and `r paste0(100 * reduction_test, "%")`, respectively.
 
@@ -555,15 +572,14 @@ and `r paste0(100 * reduction_test, "%")`, respectively.
 
 
 ## Model 3 : Big p
-In this simulation $p >> n$ so the curse of dimensionality is apparent. 
-Yet Step3 and Step2 still make improvements on Step.
+In this simulation $p >> n$ and the curse of dimensionality is present in the results 
 
 ```{r}
 only_correct_predictors_included(big_p)
 ```
 
 There was so much noise that none of the algorithms ever selected the
-correct model.
+correct model (Table 13).
 
 
 ```{r}
@@ -571,7 +587,7 @@ at_least_correct_predictors_included(big_p)
 ```
 
 When judging algorithms on including at least the covariates of the correct model,
-Step3 did the best followed by Step2 and then Step.
+Step3 did the best followed by Step2 and then Step (Table 14).
 
 
 
@@ -583,6 +599,7 @@ test_mse2kable(big_p)
 training_mse2kable(big_p)
 ```
 
+Table 15 and 16 show the test and training MSE results.
 The median value of 0 for training MSE is not surprising, since it is
 easy to fit a perfect training model in the case of $p >> n$. 
 
@@ -615,14 +632,14 @@ Step3 reduced the training
 MSE and test MSE  compared to Step by `r paste0(100 * reduction_train, "%")` 
 and `r paste0(100 * reduction_test, "%")`, respectively.
 
-[Boxplots test and training MSE located in appendix](#model-3)
+[Boxplots of test and training MSE are located in the appendix](#model-3)
 
 
 # Conclusion
 Step2 and Step3 offer improvements to the traditional stepwise algorithm in
 the case of highly negatively correlated covariates, in terms of model fit.
 They can suffer from longer runtimes, especially when their hyperparameters
-are incorrectly selected.
+are incorrectly chosen.
 
 \newpage
 
