@@ -33,7 +33,7 @@ library(dplyr)
 David Hamilton's 1987 [@hamilton1987sometimes] paper showed that correlated variables are not always
 redundant and that $R^2 > r^2_{yx_1} + r^2_{yx_2}$. In Section 3 of Hamilton's paper,
 an extreme example was shown when two variables were negatively correlated
-and neither were significant in explaining the response on their own,
+and neither did a good job in explaining the response on their own,
 but together they explained nearly all the variance ($R^2 \approx 1$).
 
 Forward selection is a greedy algorithm that only examines one variable at a 
@@ -137,6 +137,7 @@ loop
 		add current_formula to past_formulas
 		current_info_crit = min_info_crit
 		current_formula = min_formula
+	  next_formulas = empty list
 	endif
 
 	else if(min_info_crit > current_info_crit)
@@ -215,7 +216,7 @@ and unlimited recursion depth, Step3 will preform all subsets regression.
 All subsets regression has an exponential time complexity in the number of covariates.
 
 The worst case space and time complexity for a `max_block_size` of $\text{mbs}$ is
-$\mathcal O\left( p ^ {(\text{mbs}-1)}\right)$ times greater than Step.
+$\mathcal O\left( p ^ {(\text{mbs}-1)}\right)$ times that of Step.
 With proper choices of cutoffs the time and space complexity is expected
 to be within a constant of Step. 
 
