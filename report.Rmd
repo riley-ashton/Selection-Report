@@ -671,7 +671,7 @@ at_least_correct_predictors_included(twoNeg)
 
 
 ```{r}
-inclusion_order(twoNeg, pdf_head = 40)
+inclusion_order(twoNeg, pdf_head = 31)
 ```
 
 
@@ -692,10 +692,11 @@ training_mse_boxplot(twoNeg)
 test_mse_boxplot(twoNeg)
 ```
 
-
+******
 \newpage
 
 ### Model 2
+
 ```{r}
 only_correct_predictors_included(threeNeg)
 ```
@@ -705,12 +706,9 @@ at_least_correct_predictors_included(threeNeg)
 ```
 
 
-*****
-\newpage
-
 
 ```{r}
-inclusion_order(threeNeg, pdf_head = 40)
+inclusion_order(threeNeg, pdf_head = 34)
 ```
 
 
@@ -731,7 +729,7 @@ training_mse_boxplot(threeNeg)
 test_mse_boxplot(threeNeg)
 ```
 
-
+*****
 \newpage
 
 
@@ -750,7 +748,7 @@ training_mse_boxplot(big_p)
 test_mse_boxplot(big_p)
 ```
 
-
+*****
 \newpage 
 
 ## Algorithm Source Code URL
