@@ -1,0 +1,5 @@
+
+Code Future
+*	More test cases
+*	User Guide
+*	Better links to tables https://stackoverflow.com/questions/40819990/referencing-a-table-in-r-markdown-with-knitr

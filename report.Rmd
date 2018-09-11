@@ -51,10 +51,10 @@ and additionally any variables correlated with those are discussed and tested.
 - n: number of observations
 - [AIC: Akaike information criterion](https://en.wikipedia.org/wiki/Akaike_information_criterion)
 - [BIC: Bayes information criterion](https://en.wikipedia.org/wiki/Bayesian_information_criterion)
-- Step: name used for [traditional stepwise regression](https://en.wikipedia.org/wiki/Stepwise_regression) in this paper
+- Step: name used for [traditional stepwise regression](https://en.wikipedia.org/wiki/Stepwise_regression) in this report
 - $\mathcal{O}$ refers to [Big O notation](https://en.wikipedia.org/wiki/Big_O_notation).
 Formally $f(n) = \mathcal{O}(g(n))$ is defined as 
-$\exists k > 0 \, ,  \exists n_0  \, , \forall n > n_0 \, , |f(n)| \leq k \cdot g(n)$
+$$\exists k > 0 \, ,  \exists n_0  \, , \forall n > n_0 \, , |f(n)| \leq k \cdot g(n)$$
 
 
 \newpage
@@ -77,7 +77,7 @@ So a cutoff of -0.5 would mean
 all covariate pairs with a correlation of less than -0.5 (e.g. -0.7) would
 be additionally considered together. They would also be considered as singles,
 as is every other variable not yet included in the model. In this report a 
-`cor_cutoff` of -0.5 is used.
+`cor_cutoff` of -0.5 is used. This choice of -0.5 for `cor_cutoff` was arbitrary.
 
 While both Step and Step2 are greedy algorithms, Step2 looks two steps
 ahead at highly negatively correlated covariate pairs.
@@ -99,7 +99,6 @@ let current_info_crit = information criterion of starting formula
 let current_formula = starting formula
 let next_formulas = empty list
 let past_formulas = empty lookup container
-
 loop 
 	if(direction is "forward" or "both", 
 		and the number of observations > the number of covariates in current_formula)
@@ -138,7 +137,7 @@ loop
 		current_info_crit = min_info_crit
 		current_formula = min_formula
 	  next_formulas = empty list
-	endif
+	end elseif
 
 	else if(min_info_crit > current_info_crit)
 		return the model corresponding to the current_formula
@@ -175,26 +174,30 @@ and considering anything highly
 correlated with them and then anything highly correlated with those, etc until
 it reaches a block size of `max_block_size`. 
 Additionally, Step3 with a `max_block_size` of 2 is equivalent to Step2. 
-The depth used in this paper is set at 3, so the algorithm will,
-at most, consider including three covariates at a time.
+The depth used in this report is set at 3, so the algorithm will,
+at most, consider including three covariates at a time. This choice was arbitrary.
 
 What is classified as a highly correlated variable for the purposes of recursion
 are set by the two parameters `recursive_cor_positive_cutoff` and 
-`recursive_cor_negative_cutoff`. 
+`recursive_cor_negative_cutoff`. In this report 0.5 and -0.5 was used for
+`recursive_cor_positive_cutoff` and 
+`recursive_cor_negative_cutoff`, respectively. The choice of 0.5 and -0.5 was arbitrary.
 
+- Let $\land$ represent logical $\text{AND}$
+- Let $\lor$ represent logical $\text{OR}$
 - Let $\text{CC}$ be a short-form for `cor_cutoff`
 - Let $\text{RCN}$ be a short-form for `recursive_cor_negative_cutoff`
 - Let $\text{RCP}$ be a short-form for `recursive_cor_positive_cutoff`
 - Let $r(x_1,x_2)$ denote the sample correlation between $x_1$ and $x_2$
 - Let $S_1$ denote the set of covariates
 - Then $S_2$ denoting the set of highly negatively correlated pairs $(x_1,x_2)$ is defined as 
-$$S_2 = \{(x_1, x_2) | x_1 \in S_1 \land x_2 \in S_1 \land x_1 \neq x_2 \land  r(x_1,x_2) < \text{CC} \}$$
+$$S_2 = \{(x_1, x_2) \, | \,  x_1 \in S_1 \land x_2 \in S_1 \land x_1 \neq x_2 \land  r(x_1,x_2) < \text{CC} \}$$
 - Then $S_3$ denoting the set of triples $(x_1,x_2,x_3)$ is defined as
-$$S_3 = \{ (x_1, x_2, x_3) | (x_1,x_2) \in S_2 \, \land x_3 \, \in S_1 \,  \land \,  x_3 \notin (x_1, x_2) \land  \left(\text{block } x_1 \, x_2 \, x_3 \right) \}$$
+$$S_3 = \{ (x_1, x_2, x_3) \, | \,  (x_1,x_2) \in S_2 \, \land x_3 \, \in S_1 \,  \land \,  x_3 \notin (x_1, x_2) \land  \left(\text{block } x_1 \, x_2 \, x_3 \right) \}$$
 where $$\text{block } x \, y \, z = (r(x,z) < \text{RCN}) \lor (r(x,z) > \text{RCP}) \lor (r(y,z) < \text{RCN}) \lor (r(y,z) > \text{RCP})$$
 - Likewise this pattern continues
 - Then, in the genral case, $S_n$ denoting the set of length $n$, $(x_1,x_2, \dots, x_n)$ is defined as
-$$S_n = \{ (x_1, \dots, x_n) \, | \,  (x_1, \dots, x_{n-1}) \in S_{n-1} \, \land \,  x_n \in S_1 \, \land \,  x_n \notin (x_1, \dots, x_{n-1}) \, \land  \, \left(\text{block2 }  (x_1, \dots, x_{n-1})  \, x_n \right) \}$$
+$$S_n = \{ (x_1, \dots, x_n) \, \, | \,  \,  (x_1, \dots, x_{n-1}) \in S_{n-1} \, \land \,  x_n \in S_1 \, \land \,  x_n \notin (x_1, \dots, x_{n-1}) \, \land  \, \left(\text{block2 }  (x_1, \dots, x_{n-1})  \, x_n \right) \}$$
 where $$\text{block2 } D \,  c = \exists a, b \in D \, | \,  a \neq b \land \text{block } a \,  b \,  c $$
 
 
@@ -221,9 +224,9 @@ With proper choices of cutoffs the time and space complexity is expected
 to be within a constant of Step. 
 
 Note that the expected proportional increase in running time could be computed
-before running any simulations for any given data set and hyperparameters.
+before running any simulations for any given data set and algorithm parameters.
 A possible future improvement could involve the algorithm guaranteeing
-similar performance to Step by tuning the hyperparameters for a given data set.
+similar performance to Step by tuning the algorithm parameters for a given data set.
 
 \newpage
 
@@ -417,7 +420,7 @@ sample_cor_matrix(twoNeg)
 ```
 
 $$\begin{bmatrix}
-  X    & -0.89/-0.67 & -0.28/0.3 & -0.38/0.35 & -0.38/0.3 & -0.31/0.34 \\ -0.89/-0.67 &      X    & -0.33/0.34 & -0.31/0.32 & -0.3/0.37 & -0.25/0.34 \\ -0.28/0.3 & -0.33/0.34 &      X    & -0.39/0.31 & -0.32/0.3 & -0.3/0.36 \\ -0.38/0.35 & -0.31/0.32 & -0.39/0.31 &      X    & -0.38/0.29 & -0.29/0.3 \\ -0.38/0.3 & -0.3/0.37 & -0.32/0.3 & -0.38/0.29 &      X    & -0.34/0.29 \\ -0.31/0.34 & -0.25/0.34 & -0.3/0.36 & -0.29/0.3 & -0.34/0.29 &      X \end{bmatrix}$$
+ X    & -0.89/-0.64 & -0.3/0.33 & -0.31/0.28 & -0.29/0.33 & -0.32/0.33 \\ -0.89/-0.64 &      X    & -0.26/0.3 & -0.35/0.37 & -0.31/0.28 & -0.27/0.3 \\ -0.3/0.33 & -0.26/0.3 &      X    & -0.31/0.27 & -0.29/0.28 & -0.31/0.33 \\ -0.31/0.28 & -0.35/0.37 & -0.31/0.27 &      X    & -0.29/0.3 & -0.27/0.33 \\ -0.29/0.33 & -0.31/0.28 & -0.29/0.28 & -0.29/0.3 &      X    & -0.32/0.32 \\ -0.32/0.33 & -0.27/0.3 & -0.31/0.33 & -0.27/0.33 & -0.32/0.32 &      X    \end{bmatrix}$$
 
 
 The above matrix shows the sample pairwise correlation matrix of all the simulations.
@@ -433,27 +436,27 @@ $X2$ together, but would not have the option to do so for any other variables.
 
 
 ```{r two_neg_tables}
-test_mse2kable(twoNeg)
-training_mse2kable(twoNeg)
+test_sse2kable(twoNeg)
+training_sse2kable(twoNeg)
 ```
 
 ``` {r echo=FALSE}
-X_test <- test_mse2dataframe(twoNeg)
+X_test <- test_sse2dataframe(twoNeg)
 reduction_test <- (X_test["Step", "Mean"] - X_test["Step2", "Mean"]) / X_test["Step", "Mean"]
 reduction_test <- round(reduction_test, digits = 3)
 
-X_train <- training_mse2dataframe(twoNeg)
+X_train <- training_sse2dataframe(twoNeg)
 reduction_train <- (X_train["Step", "Mean"] - X_train["Step2", "Mean"]) / X_train["Step", "Mean"]
 reduction_train <- round(reduction_train, digits = 3)
 ```
 
-Table 5 and Table 6 show the test and training MSE from each algorithm.
+Table 5 and Table 6 show the test and training SSE from each algorithm.
 Step2 and Step3 are, again, identical. Step2 and Step3 reduced the training
-MSE and test MSE  compared to Step by `r paste0(100 * reduction_train, "%")` 
+SSE and test SSE  compared to Step by `r paste0(100 * reduction_train, "%")` 
 and `r paste0(100 * reduction_test, "%")`, respectively.
 
 
-[Boxplots of test and training MSE are located in the appendix](#model-1)
+[Boxplots of test and training SSE are located in the appendix](#model-1)
 
 
 \newpage
@@ -520,7 +523,7 @@ In Table 10, Step3 shows its recursive ability here by including X1, X2 and X3 t
 in one single step.
 
 $$\begin{psmallmatrix}
-X    & -0.9/-0.63 & -0.12/0.54 & -0.31/0.35 & -0.28/0.3 & -0.32/0.3 & -0.33/0.32 & -0.35/0.33 & -0.35/0.3 & -0.28/0.34 \\ -0.9/-0.63 &      X    & -0.86/-0.62 & -0.29/0.28 & -0.33/0.3 & -0.27/0.33 & -0.28/0.32 & -0.27/0.31 & -0.29/0.29 & -0.3/0.3 \\ -0.12/0.54 & -0.86/-0.62 &      X    & -0.43/0.29 & -0.27/0.32 & -0.33/0.29 & -0.34/0.35 & -0.33/0.26 & -0.33/0.34 & -0.33/0.29 \\ -0.31/0.35 & -0.29/0.28 & -0.43/0.29 &      X    & -0.35/0.3 & -0.34/0.29 & -0.3/0.36 & -0.27/0.31 & -0.31/0.29 & -0.36/0.25 \\ -0.28/0.3 & -0.33/0.3 & -0.27/0.32 & -0.35/0.3 &      X    & -0.41/0.33 & -0.36/0.35 & -0.3/0.31 & -0.29/0.38 & -0.28/0.3 \\ -0.32/0.3 & -0.27/0.33 & -0.33/0.29 & -0.34/0.29 & -0.41/0.33 &      X    & -0.32/0.34 & -0.28/0.32 & -0.35/0.3 & -0.32/0.3 \\ -0.33/0.32 & -0.28/0.32 & -0.34/0.35 & -0.3/0.36 & -0.36/0.35 & -0.32/0.34 &      X    & -0.4/0.28 & -0.33/0.31 & -0.31/0.32 \\ -0.35/0.33 & -0.27/0.31 & -0.33/0.26 & -0.27/0.31 & -0.3/0.31 & -0.28/0.32 & -0.4/0.28 &      X    & -0.32/0.27 & -0.3/0.34 \\ -0.35/0.3 & -0.29/0.29 & -0.33/0.34 & -0.31/0.29 & -0.29/0.38 & -0.35/0.3 & -0.33/0.31 & -0.32/0.27 &      X    & -0.31/0.34 \\ -0.28/0.34 & -0.3/0.3 & -0.33/0.29 & -0.36/0.25 & -0.28/0.3 & -0.32/0.3 & -0.31/0.32 & -0.3/0.34 & -0.31/0.34 &      X \end{psmallmatrix}$$
+ X & -0.89/-0.61 & -0.05/0.5 & -0.31/0.35 & -0.32/0.33 & -0.31/0.33 & -0.32/0.26 & -0.33/0.29 & -0.32/0.32 & -0.34/0.32 \\ -0.89/-0.61 &      X    & -0.85/-0.58 & -0.38/0.37 & -0.36/0.34 & -0.3/0.33 & -0.28/0.25 & -0.27/0.33 & -0.35/0.31 & -0.32/0.3 \\ -0.05/0.5 & -0.85/-0.58 &      X    & -0.34/0.32 & -0.38/0.31 & -0.3/0.32 & -0.34/0.32 & -0.3/0.32 & -0.3/0.28 & -0.36/0.27 \\ -0.31/0.35 & -0.38/0.37 & -0.34/0.32 &      X    & -0.35/0.29 & -0.26/0.35 & -0.32/0.27 & -0.29/0.35 & -0.31/0.36 & -0.31/0.29 \\ -0.32/0.33 & -0.36/0.34 & -0.38/0.31 & -0.35/0.29 &      X    & -0.28/0.31 & -0.32/0.32 & -0.29/0.31 & -0.34/0.36 & -0.34/0.31 \\ -0.31/0.33 & -0.3/0.33 & -0.3/0.32 & -0.26/0.35 & -0.28/0.31 &      X    & -0.31/0.36 & -0.35/0.27 & -0.31/0.28 & -0.3/0.31 \\ -0.32/0.26 & -0.28/0.25 & -0.34/0.32 & -0.32/0.27 & -0.32/0.32 & -0.31/0.36 &      X    & -0.31/0.27 & -0.28/0.29 & -0.3/0.29 \\ -0.33/0.29 & -0.27/0.33 & -0.3/0.32 & -0.29/0.35 & -0.29/0.31 & -0.35/0.27 & -0.31/0.27 &      X    & -0.34/0.34 & -0.31/0.27 \\ -0.32/0.32 & -0.35/0.31 & -0.3/0.28 & -0.31/0.36 & -0.34/0.36 & -0.31/0.28 & -0.28/0.29 & -0.34/0.34 &      X    & -0.31/0.29 \\ -0.34/0.32 & -0.32/0.3 & -0.36/0.27 & -0.31/0.29 & -0.34/0.31 & -0.3/0.31 & -0.3/0.29 & -0.31/0.27 & -0.31/0.29 &      X   \end{psmallmatrix}$$
 
 
 
@@ -537,23 +540,23 @@ Step3 always had the option to include X1, X2 and X3 together.
 \newpage
 
 ```{r threeNeg_tables}
-test_mse2kable(threeNeg)
-training_mse2kable(threeNeg)
+test_sse2kable(threeNeg)
+training_sse2kable(threeNeg)
 ```
 
 
 ``` {r echo=FALSE}
-X_test <- test_mse2dataframe(threeNeg)
+X_test <- test_sse2dataframe(threeNeg)
 reduction_test <- (X_test["Step", "Mean"] - X_test["Step3", "Mean"]) / X_test["Step", "Mean"]
 reduction_test <- round(reduction_test, digits = 3)
 
-X_train <- training_mse2dataframe(threeNeg)
+X_train <- training_sse2dataframe(threeNeg)
 reduction_train <- (X_train["Step", "Mean"] - X_train["Step3", "Mean"]) / X_train["Step", "Mean"]
 reduction_train <- round(reduction_train, digits = 3)
 ```
 
 As evidenced by Table 11 and Table 12, Step2 and Step had similar performance.
-Step2 had only slightly better test and training MSE than Step.
+Step2 had only slightly better test and training SSE than Step.
 The similar performance, between Step and Step2, is most likely due to the
 complex correlation structure of the covariates. Step2 is only designed to handle
 high levels of correlation between 2 covariates at a time, but the correlation
@@ -562,11 +565,11 @@ than optimal. Step3, being designed to handle complex correlation structures
 with its recursive ability, improved upon the performance of Step and Step2.
 
 Step3 reduced the training
-MSE and test MSE  compared to Step by `r paste0(100 * reduction_train, "%")` 
+SSE and test SSE  compared to Step by `r paste0(100 * reduction_train, "%")` 
 and `r paste0(100 * reduction_test, "%")`, respectively.
 
 
-[Boxplots test and training MSE located in appendix](#model-2)
+[Boxplots test and training SSE located in appendix](#model-2)
 
 
 \newpage
@@ -579,8 +582,8 @@ In this simulation $p >> n$ and the curse of dimensionality is present in the re
 only_correct_predictors_included(big_p)
 ```
 
-There was so much noise that none of the algorithms ever selected the
-correct model (Table 13).
+There was so much noise that Step2 and Step3 selected the
+correct model only once and Step never selected it (Table 13).
 
 
 ```{r}
@@ -596,51 +599,51 @@ Step3 did the best followed by Step2 and then Step (Table 14).
 
 
 ```{r}
-test_mse2kable(big_p)
-training_mse2kable(big_p)
+test_sse2kable(big_p)
+training_sse2kable(big_p)
 ```
 
-Table 15 and 16 show the test and training MSE results.
-The median value of 0 for training MSE is not surprising, since it is
+Table 15 and 16 show the test and training SSE results.
+The median value of 0 for training SSE is not surprising, since it is
 easy to fit a perfect training model in the case of $p >> n$. 
 
 
 ``` {r echo=FALSE}
-X_test <- test_mse2dataframe(big_p)
+X_test <- test_sse2dataframe(big_p)
 reduction_test <- (X_test["Step", "Mean"] - X_test["Step2", "Mean"]) / X_test["Step", "Mean"]
 reduction_test <- round(reduction_test, digits = 3)
 
-X_train <- training_mse2dataframe(big_p)
+X_train <- training_sse2dataframe(big_p)
 reduction_train <- (X_train["Step", "Mean"] - X_train["Step2", "Mean"]) / X_train["Step", "Mean"]
 reduction_train <- round(reduction_train, digits = 3)
 ```
 
 Step2 reduced the training
-MSE and test MSE  compared to Step by `r paste0(100 * reduction_train, "%")` 
+SSE and test SSE  compared to Step by `r paste0(100 * reduction_train, "%")` 
 and `r paste0(100 * reduction_test, "%")`, respectively.
 
 ``` {r echo=FALSE}
-X_test <- test_mse2dataframe(big_p)
+X_test <- test_sse2dataframe(big_p)
 reduction_test <- (X_test["Step", "Mean"] - X_test["Step3", "Mean"]) / X_test["Step", "Mean"]
 reduction_test <- round(reduction_test, digits = 3)
 
-X_train <- training_mse2dataframe(big_p)
+X_train <- training_sse2dataframe(big_p)
 reduction_train <- (X_train["Step", "Mean"] - X_train["Step3", "Mean"]) / X_train["Step", "Mean"]
 reduction_train <- round(reduction_train, digits = 3)
 ```
 
 Step3 reduced the training
-MSE and test MSE  compared to Step by `r paste0(100 * reduction_train, "%")` 
+SSE and test SSE  compared to Step by `r paste0(100 * reduction_train, "%")` 
 and `r paste0(100 * reduction_test, "%")`, respectively.
 
-[Boxplots of test and training MSE are located in the appendix](#model-3)
+[Boxplots of test and training SSE are located in the appendix](#model-3)
 
 
 # Conclusion
 Step2 and Step3 offer improvements to the traditional stepwise algorithm in
 the case of highly negatively correlated covariates, in terms of model fit.
-They can suffer from longer runtimes, especially when their hyperparameters
-are incorrectly chosen.
+They can suffer from longer runtimes, especially when their algorithm parameters
+are chosen without regard for runtime.
 
 \newpage
 
@@ -648,9 +651,9 @@ are incorrectly chosen.
 
 ## Future Inquiries
 
-- A general recommendation for setting the hyperparameters of Step2 or Step3
-- Using crossvalidation to set the hyperparameters
-- Avoiding hyperparameter choices that cause the asymptotic runtime to 
+- A general recommendation for setting the algorithm parameters of Step2 or Step3
+- Using crossvalidation to set the algorithm parameters
+- Avoiding algorithm parameters choices that cause the asymptotic runtime to 
 become greater than the traditional stepwise selection algorithm
 
 
@@ -671,7 +674,7 @@ at_least_correct_predictors_included(twoNeg)
 
 
 ```{r}
-inclusion_order(twoNeg, pdf_head = 31)
+inclusion_order(twoNeg, pdf_head = 100)
 ```
 
 
@@ -680,7 +683,7 @@ inclusion_order(twoNeg, pdf_head = 31)
 
 
 ```{r}
-training_mse_boxplot(twoNeg)
+training_sse_boxplot(twoNeg)
 ```
 
 
@@ -689,7 +692,7 @@ training_mse_boxplot(twoNeg)
 
 
 ```{r}
-test_mse_boxplot(twoNeg)
+test_sse_boxplot(twoNeg)
 ```
 
 ******
@@ -706,9 +709,16 @@ at_least_correct_predictors_included(threeNeg)
 ```
 
 
+```{r}
+inclusion_order(threeNeg, pdf_head = 46)
+```
+
+*****
+\newpage
+
 
 ```{r}
-inclusion_order(threeNeg, pdf_head = 34)
+training_sse_boxplot(threeNeg)
 ```
 
 
@@ -717,16 +727,7 @@ inclusion_order(threeNeg, pdf_head = 34)
 
 
 ```{r}
-training_mse_boxplot(threeNeg)
-```
-
-
-*****
-\newpage
-
-
-```{r}
-test_mse_boxplot(threeNeg)
+test_sse_boxplot(threeNeg)
 ```
 
 *****
@@ -736,7 +737,7 @@ test_mse_boxplot(threeNeg)
 ### Model 3
 
 ```{r}
-training_mse_boxplot(big_p)
+training_sse_boxplot(big_p)
 ```
 
 
@@ -745,7 +746,7 @@ training_mse_boxplot(big_p)
 
 
 ```{r}
-test_mse_boxplot(big_p)
+test_sse_boxplot(big_p)
 ```
 
 *****
